@@ -1,0 +1,433 @@
+openapi: 3.1.0
+info:
+  title: WASAPhoto
+  description: |-
+    Keep in touch with your friends by sharing photos of special moments, thanks to WASAPhoto!
+
+    You can upload your photos directly from your PC, and they will be visible to everyone following you.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+
+components:
+  schemas:
+    User:
+      title: User
+      description: This object represents a single user
+      type: object
+      properties:
+        username:
+          description: The username displayed to the others
+          type: string
+          example: CoolUsername42
+          minLength: 3
+          maxLength: 32
+          pattern: '^.*?$'
+        profile: { $ref: '#/components/schemas/Profile' }
+      required: [ "username", "profile" ]
+
+    Profile:
+      title: Profile
+      description: This object represents the profile data of a user
+      type: object
+      properties:
+        photos:
+          type: array
+          description: The list of photos this user uploaded
+          items: { $ref: '#/components/schemas/Photo/properties/photoId' }
+          uniqueItems: true
+        photoCount:
+          description: The count of how many photos this user uploaded
+          type: integer
+          example: 42
+          minimum: 0
+        followers:
+          description: The list of users following this user
+          type: array
+          items: { $ref: '#/components/schemas/User/properties/username' }
+          uniqueItems: true
+        following:
+          description: The list of users followed by this user
+          type: arrayhttp://localhosthttp://localhost
+          items: { $ref: '#/components/schemas/User/properties/username' }
+          uniqueItems: true
+        banList:
+          description: The list of users banned by this user
+          type: array
+          items: { $ref: '#/components/schemas/User/properties/username' }
+          uniqueItems: true
+      required: [ "photos", "photoCount", "followers", "following", "banList" ]
+
+    Comment:
+      title: Comment
+      description: This object represents a single comment bound to a Photo
+      type: object
+      properties:
+        commentId:
+          type: string
+          description: This is a uuid, unique to this Photo
+          example: abcdef012345
+          readonly: true
+        owner: { $ref: '#/components/schemas/User/properties/username' }
+        content:
+          type: string
+          description: This is the content of the comment written by the owner
+          example: "That's a nice image!"
+          pattern: '^.*?$'
+          minLength: 1
+      required: [ "commentId", "owner", "content" ]
+
+    Photo:
+      title: Photo
+      description: This object represents a single photo in the user's feed
+      type: object
+      properties:
+        photoId:
+          type: string
+          description: Unique identifier for the photo
+          example: "image123"
+          minLength: 3
+          pattern: '^.*?$'
+        owner: { $ref: '#/components/schemas/User/properties/username' }
+        imageUrl:
+          type: string
+          description: URL pointing to the image file
+          example: "https://example.com/images/{imageId}.jpg"
+        description:
+          type: string
+          description: Description or caption for the image
+          example: "A beautiful landscape"
+        uploadTime:
+          type: string
+          format: date-time
+          description: The date and time at which this photo was uploaded
+          example: 2017-07-21T17:32:28Z
+        likeCount:
+          type: integer
+          description: Number of likes for the image
+          example: 42
+          minimum: 0
+        commentsCount:
+          type: integer
+          description: Number of comments for the image
+          example: 42
+          minimum: 0
+      required: [ "photoId", "owner", "imageUrl", "uploadTime", "likeCount", "commentsCount" ]
+
+    Error:
+      title: Error
+      description: |-
+        This object represents a single error to be returned for certain requests
+      type: object
+      properties:
+        code:
+          type: string
+          description: An HTTP error code
+          example: 404
+        message:
+          type: string
+          description: A brief message describing the error code
+          example: The specified resource was not found
+      required: [ "code", "message" ]
+
+  parameters:
+    usernameParam:
+      name: username
+      in: path
+      description: Username of the user
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/User/properties/username' }
+
+    postIdParam:
+      name: photoId
+      in: path
+      description: ID of the photo
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Photo/properties/photoId' }
+
+    commentIdParam:
+      name: commentId
+      in: path
+      description: ID of the comment
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Comment/properties/commentId' }
+
+  responses:
+    # 204
+    NoContent:
+      description: The request was successful, but there is no content to return.
+    # 400
+    BadRequest:
+      description: The request was not compliant with the documentation (eg. missing fields, etc).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    # 401
+    Unauthorized:
+      description: Invalid or expired authentication credentials.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    # 404
+    NotFound:
+      description: The specified resource was not found.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    # 500
+    InternalServerError:
+      description: The server encountered an internal error. Further info in server logs.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error'}
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+paths:
+  /session:
+    post:
+      tags: [ "login" ]
+      summary: Logs in the user
+      description: |-
+        If the user does not exist, it will be created, and an identifier is returned.
+        If the user exists, the user identifier is returned.
+      operationId: doLogin
+      requestBody:
+        description: User details
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Maria
+                  pattern: '^.*?$'
+                  minLength: 3
+                  maxLength: 16
+      responses:
+        "201":
+          description: User log-in action successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identifier:
+                    # change here if you decide to use an integer or any other type of identifier
+                    type: string
+                    example: "abcdef012345"
+  /users/{username}:
+    put:
+      tags: [ "profile" ]
+      operationId: setMyUserName
+      summary: Change your username
+      description: |-
+        Given a user's username, update the username.
+        If the ID is not in use, return an error string.
+      parameters:
+        - $ref: '#/components/parameters/usernameParam'
+      requestBody:
+        description: The new username to set
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/User/properties/username' }
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+      security:
+        - bearerAuth: [ ]
+  /users/{username}/profile:
+    get:
+      tags: [ "profile" ]
+      operationId: getUserProfile
+      summary: Retrieve the information of a user
+      description: |-
+        Given a user's username, retrieve all the public info available.
+        If the ID is not in use, return an error string.
+      parameters:
+        - $ref: '#/components/parameters/usernameParam'
+      responses:
+        "200":
+          description: Succesfully retrieved profile data
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [ "profile" ]
+      operationId: banUnbanFollowUnfollowUser
+      summary: Ban/Unban/Follow/Unfollow a user
+      description: |-
+        Given a user's username:
+          - ban or unban him
+          - follow or unfollow him
+
+        If the ID is not in use, return an error string.
+      parameters:
+        - $ref: '#/components/parameters/usernameParam'
+        - name: action
+          in: query
+          description: Specify the action (ban, unban, follow, unfollow)
+          required: true
+          schema:
+            type: string
+            enum: [ "ban", "unban", "follow", "unfollow" ]
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+      security:
+        - bearerAuth: [ ]
+  /users/{username}/photos:
+    get:
+      tags: [ "photos" ]
+      operationId: getMyStream
+      summary: Retrieve the content stream of the user
+      description: |-
+        Given a user's username, retrieve the content stream.
+        If the username is not in use, return an error string.
+
+        The stream is composed of entries that have images, likes and comments.
+        These entries are sorted in reverse chronological order.
+      parameters:
+        - $ref: '#/components/parameters/usernameParam'
+      responses:
+        "200":
+          description: Successfully retrieved image stream for this user
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Photo' }
+                uniqueItems: true
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+      security:
+        - bearerAuth: [ ]
+    post:
+      tags: [ "photos" ]
+      operationId: uploadPhoto
+      summary: Create a post with the given photo
+      description: |-
+        Given the file of an image, upload it to the server under a new Photo.
+      parameters:
+        - $ref: '#/components/parameters/usernameParam'
+      requestBody:
+        description: The image to upload along with an optional description
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                description: { $ref: '#/components/schemas/Photo/properties/description' }
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+      security:
+        - bearerAuth: [ ]
+  /users/{username}/photos/{photoId}:
+    put:
+      tags: [ "photos" ]
+      parameters:
+        - $ref: '#/components/parameters/usernameParam'
+        - $ref: '#/components/parameters/postIdParam'
+        - name: action
+          in: query
+          description: Specify the action (like or unlike)
+          required: true
+          schema:
+            type: string
+            enum: [ "like", "unlike" ]
+      operationId: likeUnlikePhoto
+      summary: Like or Unlike a photo
+      description: Like or Unlike a photo in the user's stream.
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+      security:
+        - bearerAuth: [ ]
+    delete:
+      tags: [ "photos" ]
+      operationId: deletePhoto
+      summary: Delete a photo from the current user
+      description: |-
+        Given the id of a photo from the current user's posts, delete it.
+      parameters:
+        - $ref: '#/components/parameters/usernameParam'
+        - $ref: '#/components/parameters/postIdParam'
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+      security:
+        - bearerAuth: [ ]
+  /users/{username}/photos/{photoId}/comments:
+    post:
+      tags: [ "photos" ]
+      operationId: commentPhoto
+      summary: Add a comment to a photo
+      description: |-
+        Given the id of a photo from a user (defined by id as well), add a comment to it.
+        Multiple comments can be created by the same user.
+      parameters:
+        - $ref: '#/components/parameters/usernameParam'
+        - $ref: '#/components/parameters/postIdParam'
+      requestBody:
+        description: The comment content
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Comment/properties/content' }
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+      security:
+        - bearerAuth: [ ]
+  /users/{username}/photos/{photoId}/comments/{commentId}:
+    delete:
+      tags: [ "photos" ]
+      operationId: uncommentPhoto
+      summary: Remove a comment from a photo
+      description: |-
+        Given the id of a comment from a photo (defined by id as well), delete it.
+        Only the comment owner can delete it.
+      parameters:
+        - $ref: '#/components/parameters/usernameParam'
+        - $ref: '#/components/parameters/postIdParam'
+        - $ref: '#/components/parameters/commentIdParam'
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+      security:
+        - bearerAuth: [ ]
