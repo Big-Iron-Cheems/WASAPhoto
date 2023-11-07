@@ -295,7 +295,7 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
       security:
         - bearerAuth: [ ]
-  /users/{username}/photos/:
+  /users/{username}/photos:
     get:
       tags: [ "photos" ]
       operationId: getMyStream
@@ -388,7 +388,7 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
       security:
         - bearerAuth: [ ]
-  /users/{username}/photos/{photoId}/comments/:
+  /users/{username}/photos/{photoId}/comments:
     post:
       tags: [ "photos" ]
       operationId: commentPhoto
