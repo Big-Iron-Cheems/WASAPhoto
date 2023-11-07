@@ -48,7 +48,7 @@ components:
           uniqueItems: true
         following:
           description: The list of users followed by this user
-          type: arrayhttp://localhosthttp://localhost
+          type: array
           items: { $ref: '#/components/schemas/User/properties/username' }
           uniqueItems: true
         banList:
@@ -67,7 +67,7 @@ components:
           type: string
           description: This is a uuid, unique to this Photo
           example: abcdef012345
-          readonly: true
+          readOnly: true
         owner: { $ref: '#/components/schemas/User/properties/username' }
         content:
           type: string
@@ -86,6 +86,7 @@ components:
           type: string
           description: Unique identifier for the photo
           example: "image123"
+          readOnly: true
           minLength: 3
           pattern: '^.*?$'
         owner: { $ref: '#/components/schemas/User/properties/username' }
@@ -123,7 +124,7 @@ components:
         code:
           type: string
           description: An HTTP error code
-          example: 404
+          example: "404"
         message:
           type: string
           description: A brief message describing the error code
@@ -140,7 +141,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/User/properties/username' }
 
-    postIdParam:
+    photoIdParam:
       name: photoId
       in: path
       description: ID of the photo
@@ -185,13 +186,21 @@ components:
       description: The server encountered an internal error. Further info in server logs.
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Error'}
+          schema: { $ref: '#/components/schemas/Error' }
 
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+tags:
+  - name: login
+    description: Operations related to user login
+  - name: profile
+    description: Operations related to user profiles
+  - name: photos
+    description: Operations related to photos
 
 paths:
   /session:
@@ -229,6 +238,8 @@ paths:
                     type: string
                     example: "abcdef012345"
   /users/{username}:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
     put:
       tags: [ "profile" ]
       operationId: setMyUserName
@@ -236,14 +247,15 @@ paths:
       description: |-
         Given a user's username, update the username.
         If the ID is not in use, return an error string.
-      parameters:
-        - $ref: '#/components/parameters/usernameParam'
       requestBody:
         description: The new username to set
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/User/properties/username' }
+            schema:
+              type: object
+              properties:
+                newUsername: { $ref: '#/components/schemas/User/properties/username' }
       responses:
         "204": { $ref: '#/components/responses/NoContent' }
         "400": { $ref: '#/components/responses/BadRequest' }
@@ -252,6 +264,8 @@ paths:
       security:
         - bearerAuth: [ ]
   /users/{username}/profile:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
     get:
       tags: [ "profile" ]
       operationId: getUserProfile
@@ -259,8 +273,6 @@ paths:
       description: |-
         Given a user's username, retrieve all the public info available.
         If the ID is not in use, return an error string.
-      parameters:
-        - $ref: '#/components/parameters/usernameParam'
       responses:
         "200":
           description: Succesfully retrieved profile data
@@ -280,7 +292,6 @@ paths:
 
         If the ID is not in use, return an error string.
       parameters:
-        - $ref: '#/components/parameters/usernameParam'
         - name: action
           in: query
           description: Specify the action (ban, unban, follow, unfollow)
@@ -296,6 +307,8 @@ paths:
       security:
         - bearerAuth: [ ]
   /users/{username}/photos:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
     get:
       tags: [ "photos" ]
       operationId: getMyStream
@@ -306,17 +319,18 @@ paths:
 
         The stream is composed of entries that have images, likes and comments.
         These entries are sorted in reverse chronological order.
-      parameters:
-        - $ref: '#/components/parameters/usernameParam'
       responses:
         "200":
           description: Successfully retrieved image stream for this user
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: '#/components/schemas/Photo' }
-                uniqueItems: true
+                type: object
+                properties:
+                  photos:
+                    type: array
+                    items: { $ref: '#/components/schemas/Photo' }
+                    uniqueItems: true
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
@@ -328,8 +342,6 @@ paths:
       summary: Create a post with the given photo
       description: |-
         Given the file of an image, upload it to the server under a new Photo.
-      parameters:
-        - $ref: '#/components/parameters/usernameParam'
       requestBody:
         description: The image to upload along with an optional description
         required: true
@@ -350,11 +362,12 @@ paths:
       security:
         - bearerAuth: [ ]
   /users/{username}/photos/{photoId}:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/photoIdParam'
     put:
       tags: [ "photos" ]
       parameters:
-        - $ref: '#/components/parameters/usernameParam'
-        - $ref: '#/components/parameters/postIdParam'
         - name: action
           in: query
           description: Specify the action (like or unlike)
@@ -378,9 +391,6 @@ paths:
       summary: Delete a photo from the current user
       description: |-
         Given the id of a photo from the current user's posts, delete it.
-      parameters:
-        - $ref: '#/components/parameters/usernameParam'
-        - $ref: '#/components/parameters/postIdParam'
       responses:
         "204": { $ref: '#/components/responses/NoContent' }
         "400": { $ref: '#/components/responses/BadRequest' }
@@ -389,6 +399,9 @@ paths:
       security:
         - bearerAuth: [ ]
   /users/{username}/photos/{photoId}/comments:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/photoIdParam'
     post:
       tags: [ "photos" ]
       operationId: commentPhoto
@@ -396,15 +409,15 @@ paths:
       description: |-
         Given the id of a photo from a user (defined by id as well), add a comment to it.
         Multiple comments can be created by the same user.
-      parameters:
-        - $ref: '#/components/parameters/usernameParam'
-        - $ref: '#/components/parameters/postIdParam'
       requestBody:
         description: The comment content
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/Comment/properties/content' }
+            schema:
+              type: object
+              properties:
+                content: { $ref: '#/components/schemas/Comment/properties/content' }
       responses:
         "204": { $ref: '#/components/responses/NoContent' }
         "400": { $ref: '#/components/responses/BadRequest' }
@@ -413,6 +426,10 @@ paths:
       security:
         - bearerAuth: [ ]
   /users/{username}/photos/{photoId}/comments/{commentId}:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/photoIdParam'
+      - $ref: '#/components/parameters/commentIdParam'
     delete:
       tags: [ "photos" ]
       operationId: uncommentPhoto
@@ -420,10 +437,6 @@ paths:
       description: |-
         Given the id of a comment from a photo (defined by id as well), delete it.
         Only the comment owner can delete it.
-      parameters:
-        - $ref: '#/components/parameters/usernameParam'
-        - $ref: '#/components/parameters/postIdParam'
-        - $ref: '#/components/parameters/commentIdParam'
       responses:
         "204": { $ref: '#/components/responses/NoContent' }
         "400": { $ref: '#/components/responses/BadRequest' }
