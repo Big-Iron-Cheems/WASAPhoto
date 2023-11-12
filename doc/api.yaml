@@ -36,6 +36,8 @@ components:
           description: The list of photos this user uploaded
           items: { $ref: '#/components/schemas/Photo/properties/photoId' }
           uniqueItems: true
+          minItems: 0
+          maxItems: 99999
         photoCount:
           description: The count of how many photos this user uploaded
           type: integer
@@ -46,16 +48,22 @@ components:
           type: array
           items: { $ref: '#/components/schemas/User/properties/username' }
           uniqueItems: true
+          minItems: 0
+          maxItems: 99999
         following:
           description: The list of users followed by this user
           type: array
           items: { $ref: '#/components/schemas/User/properties/username' }
           uniqueItems: true
+          minItems: 0
+          maxItems: 99999
         banList:
           description: The list of users banned by this user
           type: array
           items: { $ref: '#/components/schemas/User/properties/username' }
           uniqueItems: true
+          minItems: 0
+          maxItems: 99999
       required: [ "photos", "photoCount", "followers", "following", "banList" ]
 
     Comment:
@@ -65,8 +73,11 @@ components:
       properties:
         commentId:
           type: string
-          description: This is a uuid, unique to this Photo
-          example: abcdef012345
+          description: Unique identifier for the comment
+          example: "#C1234"
+          pattern: '^.*?$'
+          minLength: 3
+          maxLength: 16
           readOnly: true
         owner: { $ref: '#/components/schemas/User/properties/username' }
         content:
@@ -75,6 +86,7 @@ components:
           example: "That's a nice image!"
           pattern: '^.*?$'
           minLength: 1
+          maxLength: 256
       required: [ "commentId", "owner", "content" ]
 
     Photo:
@@ -85,19 +97,24 @@ components:
         photoId:
           type: string
           description: Unique identifier for the photo
-          example: "image123"
+          example: "#P1234"
           readOnly: true
           minLength: 3
+          maxLength: 16
           pattern: '^.*?$'
         owner: { $ref: '#/components/schemas/User/properties/username' }
         imageUrl:
           type: string
+          format: url
           description: URL pointing to the image file
-          example: "https://example.com/images/{imageId}.jpg"
+          example: "https://www.example.com/images/image123.png"
         description:
           type: string
           description: Description or caption for the image
           example: "A beautiful landscape"
+          pattern: '^.*?$'
+          minLength: 0
+          maxLength: 256
         uploadTime:
           type: string
           format: date-time
@@ -141,6 +158,15 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/User/properties/username' }
 
+    targetUsernameParam:
+      name: targetUsername
+      in: path
+      description: Username of the target
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/User/properties/username' }
+
     photoIdParam:
       name: photoId
       in: path
@@ -149,6 +175,15 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Photo/properties/photoId' }
+
+    likeIdParam:
+      name: likeId
+      in: path
+      description: ID of the like (that being the username of the liker)
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/User/properties/username' }
 
     commentIdParam:
       name: commentId
@@ -194,13 +229,24 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+security:
+  - bearerAuth: [ ]
+
 tags:
   - name: login
     description: Operations related to user login
   - name: profile
     description: Operations related to user profiles
+  - name: bans
+    description: Operations related to banning users
+  - name: follows
+    description: Operations related to following users
   - name: photos
     description: Operations related to photos
+  - name: likes
+    description: Operations related to liking photos
+  - name: comments
+    description: Operations related to commenting photos
 
 paths:
   /session:
@@ -218,9 +264,11 @@ paths:
           application/json:
             schema:
               type: object
+              description: login schema
               properties:
                 name:
                   type: string
+                  description: The name of the user
                   example: Maria
                   pattern: '^.*?$'
                   minLength: 3
@@ -232,11 +280,16 @@ paths:
             application/json:
               schema:
                 type: object
+                description: user schema
                 properties:
                   identifier:
                     # change here if you decide to use an integer or any other type of identifier
                     type: string
-                    example: "abcdef012345"
+                    description: Unique identifier for the user
+                    example: "#U1234"
+                    minLength: 3
+                    maxLength: 16
+      security: [ ]
   /users/{username}:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
@@ -254,15 +307,18 @@ paths:
           application/json:
             schema:
               type: object
+              description: username schema
               properties:
                 newUsername: { $ref: '#/components/schemas/User/properties/username' }
       responses:
-        "204": { $ref: '#/components/responses/NoContent' }
+        "201":
+          description: Username changed successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-      security:
-        - bearerAuth: [ ]
   /users/{username}/profile:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
@@ -275,37 +331,94 @@ paths:
         If the ID is not in use, return an error string.
       responses:
         "200":
-          description: Succesfully retrieved profile data
+          description: Successfully retrieved profile data
           content:
             application/json:
               schema: { $ref: '#/components/schemas/User' }
         "400": { $ref: '#/components/responses/BadRequest' }
         "404": { $ref: '#/components/responses/NotFound' }
-    put:
-      tags: [ "profile" ]
-      operationId: banUnbanFollowUnfollowUser
-      summary: Ban/Unban/Follow/Unfollow a user
-      description: |-
-        Given a user's username:
-          - ban or unban him
-          - follow or unfollow him
-
-        If the ID is not in use, return an error string.
-      parameters:
-        - name: action
-          in: query
-          description: Specify the action (ban, unban, follow, unfollow)
-          required: true
-          schema:
-            type: string
-            enum: [ "ban", "unban", "follow", "unfollow" ]
+  /users/{username}/bans:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+    post:
+      tags: [ "bans" ]
+      operationId: banUser
+      summary: Ban a user
+      description: Given a user's username, ban them.
+      requestBody:
+        description: The username of the user to ban
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: username schema
+              properties:
+                targetUsername: { $ref: '#/components/schemas/User/properties/username' }
+      responses:
+        "201":
+          description: User banned successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+  /users/{username}/bans/{targetUsername}:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/targetUsernameParam'
+    delete:
+      tags: [ "bans" ]
+      operationId: unbanUser
+      summary: Unban a user
+      description: Given a user's username, unban them.
       responses:
         "204": { $ref: '#/components/responses/NoContent' }
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-      security:
-        - bearerAuth: [ ]
+  /users/{username}/follows:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+    post:
+      tags: [ "follows" ]
+      operationId: followUser
+      summary: Follow a user
+      description: Given a user's username, follow them.
+      requestBody:
+        description: The username of the user to follow
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: username schema
+              properties:
+                targetUsername: { $ref: '#/components/schemas/User/properties/username' }
+      responses:
+        "201":
+          description: User followed successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+  /users/{username}/follows/{targetUsername}:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/targetUsernameParam'
+    delete:
+      tags: [ "follows" ]
+      operationId: unfollowUser
+      summary: Unfollow a user
+      description: Given a user's username, unfollow them.
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
   /users/{username}/photos:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
@@ -326,16 +439,18 @@ paths:
             application/json:
               schema:
                 type: object
+                description: photo stream schema
                 properties:
                   photos:
                     type: array
+                    description: The list of photos this user uploaded
                     items: { $ref: '#/components/schemas/Photo' }
                     uniqueItems: true
+                    minItems: 0
+                    maxItems: 99999
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-      security:
-        - bearerAuth: [ ]
     post:
       tags: [ "photos" ]
       operationId: uploadPhoto
@@ -349,9 +464,11 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              description: upload schema
               properties:
                 image:
                   type: string
+                  description: The image file to upload
                   format: binary
                 description: { $ref: '#/components/schemas/Photo/properties/description' }
       responses:
@@ -359,32 +476,10 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-      security:
-        - bearerAuth: [ ]
   /users/{username}/photos/{photoId}:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
       - $ref: '#/components/parameters/photoIdParam'
-    put:
-      tags: [ "photos" ]
-      parameters:
-        - name: action
-          in: query
-          description: Specify the action (like or unlike)
-          required: true
-          schema:
-            type: string
-            enum: [ "like", "unlike" ]
-      operationId: likeUnlikePhoto
-      summary: Like or Unlike a photo
-      description: Like or Unlike a photo in the user's stream.
-      responses:
-        "204": { $ref: '#/components/responses/NoContent' }
-        "400": { $ref: '#/components/responses/BadRequest' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "404": { $ref: '#/components/responses/NotFound' }
-      security:
-        - bearerAuth: [ ]
     delete:
       tags: [ "photos" ]
       operationId: deletePhoto
@@ -396,14 +491,51 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-      security:
-        - bearerAuth: [ ]
+  /users/{username}/photos/{photoId}/likes:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/photoIdParam'
+    post:
+      tags: [ "likes" ]
+      operationId: likePhoto
+      summary: Like a photo
+      description: Given a user's username, and a photo's id, like it.
+      requestBody:
+        description: The username of the liker
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: username schema
+              properties:
+                targetUsername: { $ref: '#/components/schemas/User/properties/username' }
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+  /users/{username}/photos/{photoId}/likes/{likeId}:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/photoIdParam'
+      - $ref: '#/components/parameters/likeIdParam'
+    delete:
+      tags: [ "likes" ]
+      operationId: unlikePhoto
+      summary: Unlike a photo
+      description: Given a user's username and a photo's id, unlike it.
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
   /users/{username}/photos/{photoId}/comments:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
       - $ref: '#/components/parameters/photoIdParam'
     post:
-      tags: [ "photos" ]
+      tags: [ "comments" ]
       operationId: commentPhoto
       summary: Add a comment to a photo
       description: |-
@@ -416,6 +548,7 @@ paths:
           application/json:
             schema:
               type: object
+              description: comment content schema
               properties:
                 content: { $ref: '#/components/schemas/Comment/properties/content' }
       responses:
@@ -423,15 +556,13 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-      security:
-        - bearerAuth: [ ]
   /users/{username}/photos/{photoId}/comments/{commentId}:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
       - $ref: '#/components/parameters/photoIdParam'
       - $ref: '#/components/parameters/commentIdParam'
     delete:
-      tags: [ "photos" ]
+      tags: [ "comments" ]
       operationId: uncommentPhoto
       summary: Remove a comment from a photo
       description: |-
@@ -442,5 +573,3 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-      security:
-        - bearerAuth: [ ]
