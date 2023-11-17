@@ -16,6 +16,12 @@ components:
       description: This object represents a single user
       type: object
       properties:
+        userId:
+          type: integer
+          description: Unique identifier for the user
+          example: 1234
+          readOnly: true
+          minimum: 0
         username:
           description: The username displayed to the others
           type: string
@@ -23,8 +29,7 @@ components:
           minLength: 3
           maxLength: 32
           pattern: '^.*?$'
-        profile: { $ref: '#/components/schemas/Profile' }
-      required: [ "username", "profile" ]
+      required: [ "userId", "username" ]
 
     Profile:
       title: Profile
@@ -46,21 +51,21 @@ components:
         followers:
           description: The list of users following this user
           type: array
-          items: { $ref: '#/components/schemas/User/properties/username' }
+          items: { $ref: '#/components/schemas/User/properties/userId' }
           uniqueItems: true
           minItems: 0
           maxItems: 99999
         following:
           description: The list of users followed by this user
           type: array
-          items: { $ref: '#/components/schemas/User/properties/username' }
+          items: { $ref: '#/components/schemas/User/properties/userId' }
           uniqueItems: true
           minItems: 0
           maxItems: 99999
         banList:
           description: The list of users banned by this user
           type: array
-          items: { $ref: '#/components/schemas/User/properties/username' }
+          items: { $ref: '#/components/schemas/User/properties/userId' }
           uniqueItems: true
           minItems: 0
           maxItems: 99999
@@ -72,14 +77,12 @@ components:
       type: object
       properties:
         commentId:
-          type: string
+          type: integer
           description: Unique identifier for the comment
-          example: "#C1234"
-          pattern: '^.*?$'
-          minLength: 3
-          maxLength: 16
+          example: 1234
+          minimum: 0
           readOnly: true
-        owner: { $ref: '#/components/schemas/User/properties/username' }
+        owner: { $ref: '#/components/schemas/User/properties/userId' }
         content:
           type: string
           description: This is the content of the comment written by the owner
@@ -95,19 +98,18 @@ components:
       type: object
       properties:
         photoId:
-          type: string
+          type: integer
           description: Unique identifier for the photo
-          example: "#P1234"
+          example: 1234
+          minimum: 0
           readOnly: true
-          minLength: 3
-          maxLength: 16
-          pattern: '^.*?$'
-        owner: { $ref: '#/components/schemas/User/properties/username' }
-        imageUrl:
+        owner: { $ref: '#/components/schemas/User/properties/userId' }
+        image:
           type: string
-          format: url
-          description: URL pointing to the image file
-          example: "https://www.example.com/images/image123.png"
+          format: binary
+          description: Binary data of the image
+          minLength: 0
+          maxLength: 999999999 # This is here to handle warnings, it's not a real limit
         description:
           type: string
           description: Description or caption for the image
@@ -134,7 +136,7 @@ components:
           description: Indicates whether the requesting user has liked the image.
           type: boolean
           example: true
-      required: [ "photoId", "owner", "imageUrl", "uploadTime", "likeCount", "commentsCount", "likeStatus" ]
+      required: [ "photoId", "owner", "image", "uploadTime", "likeCount", "commentsCount", "likeStatus" ]
 
     Error:
       title: Error
@@ -153,23 +155,23 @@ components:
       required: [ "code", "message" ]
 
   parameters:
-    usernameParam:
-      name: username
+    userIdParam:
+      name: userId
       in: path
-      description: Username of the user
+      description: ID of the user
       required: true
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/User/properties/username' }
+          schema: { $ref: '#/components/schemas/User/properties/userId' }
 
-    targetUsernameParam:
-      name: targetUsername
+    targetUserIdParam:
+      name: targetUserId
       in: path
-      description: Username of the target
+      description: ID of the target
       required: true
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/User/properties/username' }
+          schema: { $ref: '#/components/schemas/User/properties/userId' }
 
     photoIdParam:
       name: photoId
@@ -183,11 +185,11 @@ components:
     likeIdParam:
       name: likeId
       in: path
-      description: ID of the like (that being the username of the liker)
+      description: ID of the like (that being the id of the liker)
       required: true
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/User/properties/username' }
+          schema: { $ref: '#/components/schemas/User/properties/userId' }
 
     commentIdParam:
       name: commentId
@@ -295,15 +297,15 @@ paths:
                     maxLength: 16
       security: [ ]
 
-  /users/{username}:
+  /users/{userId}:
     parameters:
-      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/userIdParam'
     put:
       tags: [ "User" ]
       operationId: setMyUserName
       summary: Change your username
       description: |-
-        Given a user's username, update the username.
+        Given a user's id, update the username.
         If the ID is not in use, return an error string.
       requestBody:
         description: The new username to set
@@ -326,15 +328,15 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/profile:
+  /users/{userId}/profile:
     parameters:
-      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/userIdParam'
     get:
       tags: [ "User" ]
       operationId: getUserProfile
       summary: Retrieve the information of a user
       description: |-
-        Given a user's username, retrieve all the public info available.
+        Given a user's id, retrieve all the public info available.
         If the ID is not in use, return an error string.
       responses:
         "200":
@@ -346,16 +348,15 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/stream:
+  /users/{userId}/stream:
     parameters:
-      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/userIdParam'
     get:
       tags: [ "User" ]
       operationId: getMyStream
       summary: Retrieve the content stream of the user
       description: |-
-        Given a user's username, retrieve the content stream.
-        If the username is not in use, return an error string.
+        Given a user's id, retrieve the content stream.
 
         The stream is composed of entries that have images, likes and comments.
         These entries are sorted in reverse chronological order.
@@ -380,24 +381,24 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/bans:
+  /users/{userId}/bans:
     parameters:
-      - $ref: '#/components/parameters/usernameParam'
-    put:
+      - $ref: '#/components/parameters/userIdParam'
+    post:
       tags: [ "Ban" ]
       operationId: banUser
       summary: Ban a user
-      description: Given a user's username, ban them.
+      description: Given a user's id, ban them.
       requestBody:
-        description: The username of the user to ban
+        description: The id of the user to ban
         required: true
         content:
           application/json:
             schema:
               type: object
-              description: username schema
+              description: userId schema
               properties:
-                targetUsername: { $ref: '#/components/schemas/User/properties/username' }
+                targetUserId: { $ref: '#/components/schemas/User/properties/userId' }
       responses:
         "201":
           description: User banned successfully
@@ -409,15 +410,15 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/bans/{targetUsername}:
+  /users/{userId}/bans/{targetUserId}:
     parameters:
-      - $ref: '#/components/parameters/usernameParam'
-      - $ref: '#/components/parameters/targetUsernameParam'
+      - $ref: '#/components/parameters/userIdParam'
+      - $ref: '#/components/parameters/targetUserIdParam'
     delete:
       tags: [ "Ban" ]
       operationId: unbanUser
       summary: Unban a user
-      description: Given a user's username, unban them.
+      description: Given a user's id, unban them.
       responses:
         "204": { $ref: '#/components/responses/NoContent' }
         "400": { $ref: '#/components/responses/BadRequest' }
@@ -425,24 +426,24 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/follows:
+  /users/{userId}/follows:
     parameters:
-      - $ref: '#/components/parameters/usernameParam'
-    put:
+      - $ref: '#/components/parameters/userIdParam'
+    post:
       tags: [ "Follow" ]
       operationId: followUser
       summary: Follow a user
-      description: Given a user's username, follow them.
+      description: Given a user's id, follow them.
       requestBody:
-        description: The username of the user to follow
+        description: The userId of the user to follow
         required: true
         content:
           application/json:
             schema:
               type: object
-              description: username schema
+              description: userId schema
               properties:
-                targetUsername: { $ref: '#/components/schemas/User/properties/username' }
+                targetUserId: { $ref: '#/components/schemas/User/properties/userId' }
       responses:
         "201":
           description: User followed successfully
@@ -454,15 +455,15 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/follows/{targetUsername}:
+  /users/{userId}/follows/{targetUserId}:
     parameters:
-      - $ref: '#/components/parameters/usernameParam'
-      - $ref: '#/components/parameters/targetUsernameParam'
+      - $ref: '#/components/parameters/userIdParam'
+      - $ref: '#/components/parameters/targetUserIdParam'
     delete:
       tags: [ "Follow" ]
       operationId: unfollowUser
       summary: Unfollow a user
-      description: Given a user's username, unfollow them.
+      description: Given a user's id, unfollow them.
       responses:
         "204": { $ref: '#/components/responses/NoContent' }
         "400": { $ref: '#/components/responses/BadRequest' }
@@ -470,9 +471,9 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/photos:
+  /users/{userId}/photos:
     parameters:
-      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/userIdParam'
     post:
       tags: [ "Photo" ]
       operationId: uploadPhoto
@@ -506,9 +507,9 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/photos/{photoId}:
+  /users/{userId}/photos/{photoId}:
     parameters:
-      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/userIdParam'
       - $ref: '#/components/parameters/photoIdParam'
     delete:
       tags: [ "Photo" ]
@@ -523,25 +524,25 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/photos/{photoId}/likes:
+  /users/{userId}/photos/{photoId}/likes:
     parameters:
-      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/userIdParam'
       - $ref: '#/components/parameters/photoIdParam'
-    put:
+    post:
       tags: [ "Like" ]
       operationId: likePhoto
       summary: Like a photo
-      description: Given a user's username, and a photo's id, like it.
+      description: Given a user's id, and a photo's id, like it.
       requestBody:
-        description: The username of the liker
+        description: The id of the liker
         required: true
         content:
           application/json:
             schema:
               type: object
-              description: username schema
+              description: userId schema
               properties:
-                targetUsername: { $ref: '#/components/schemas/User/properties/username' }
+                targetUserId: { $ref: '#/components/schemas/User/properties/userId' }
       responses:
         "201":
           description: Photo liked successfully
@@ -553,16 +554,16 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/photos/{photoId}/likes/{likeId}:
+  /users/{userId}/photos/{photoId}/likes/{likeId}:
     parameters:
-      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/userIdParam'
       - $ref: '#/components/parameters/photoIdParam'
       - $ref: '#/components/parameters/likeIdParam'
     delete:
       tags: [ "Like" ]
       operationId: unlikePhoto
       summary: Unlike a photo
-      description: Given a user's username and a photo's id, unlike it.
+      description: Given a user's id and a photo's id, unlike it.
       responses:
         "204": { $ref: '#/components/responses/NoContent' }
         "400": { $ref: '#/components/responses/BadRequest' }
@@ -570,9 +571,9 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/photos/{photoId}/comments:
+  /users/{userId}/photos/{photoId}/comments:
     parameters:
-      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/userIdParam'
       - $ref: '#/components/parameters/photoIdParam'
     post:
       tags: [ "Comment" ]
@@ -602,9 +603,9 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/photos/{photoId}/comments/{commentId}:
+  /users/{userId}/photos/{photoId}/comments/{commentId}:
     parameters:
-      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/userIdParam'
       - $ref: '#/components/parameters/photoIdParam'
       - $ref: '#/components/parameters/commentIdParam'
     delete:
