@@ -130,7 +130,11 @@ components:
           description: Number of comments for the image
           example: 42
           minimum: 0
-      required: [ "photoId", "owner", "imageUrl", "uploadTime", "likeCount", "commentsCount" ]
+        likeStatus:
+          description: Indicates whether the requesting user has liked the image.
+          type: boolean
+          example: true
+      required: [ "photoId", "owner", "imageUrl", "uploadTime", "likeCount", "commentsCount", "likeStatus" ]
 
     Error:
       title: Error
@@ -233,25 +237,25 @@ security:
   - bearerAuth: [ ]
 
 tags:
-  - name: login
+  - name: Login
     description: Operations related to user login
-  - name: profile
+  - name: User
     description: Operations related to user profiles
-  - name: bans
+  - name: Ban
     description: Operations related to banning users
-  - name: follows
+  - name: Follow
     description: Operations related to following users
-  - name: photos
+  - name: Photo
     description: Operations related to photos
-  - name: likes
+  - name: Like
     description: Operations related to liking photos
-  - name: comments
+  - name: Comment
     description: Operations related to commenting photos
 
 paths:
   /session:
     post:
-      tags: [ "login" ]
+      tags: [ "Login" ]
       summary: Logs in the user
       description: |-
         If the user does not exist, it will be created, and an identifier is returned.
@@ -290,11 +294,12 @@ paths:
                     minLength: 3
                     maxLength: 16
       security: [ ]
+
   /users/{username}:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
     put:
-      tags: [ "profile" ]
+      tags: [ "User" ]
       operationId: setMyUserName
       summary: Change your username
       description: |-
@@ -319,11 +324,13 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
   /users/{username}/profile:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
     get:
-      tags: [ "profile" ]
+      tags: [ "User" ]
       operationId: getUserProfile
       summary: Retrieve the information of a user
       description: |-
@@ -337,93 +344,13 @@ paths:
               schema: { $ref: '#/components/schemas/User' }
         "400": { $ref: '#/components/responses/BadRequest' }
         "404": { $ref: '#/components/responses/NotFound' }
-  /users/{username}/bans:
-    parameters:
-      - $ref: '#/components/parameters/usernameParam'
-    post:
-      tags: [ "bans" ]
-      operationId: banUser
-      summary: Ban a user
-      description: Given a user's username, ban them.
-      requestBody:
-        description: The username of the user to ban
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              description: username schema
-              properties:
-                targetUsername: { $ref: '#/components/schemas/User/properties/username' }
-      responses:
-        "201":
-          description: User banned successfully
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/User' }
-        "400": { $ref: '#/components/responses/BadRequest' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "404": { $ref: '#/components/responses/NotFound' }
-  /users/{username}/bans/{targetUsername}:
-    parameters:
-      - $ref: '#/components/parameters/usernameParam'
-      - $ref: '#/components/parameters/targetUsernameParam'
-    delete:
-      tags: [ "bans" ]
-      operationId: unbanUser
-      summary: Unban a user
-      description: Given a user's username, unban them.
-      responses:
-        "204": { $ref: '#/components/responses/NoContent' }
-        "400": { $ref: '#/components/responses/BadRequest' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "404": { $ref: '#/components/responses/NotFound' }
-  /users/{username}/follows:
-    parameters:
-      - $ref: '#/components/parameters/usernameParam'
-    post:
-      tags: [ "follows" ]
-      operationId: followUser
-      summary: Follow a user
-      description: Given a user's username, follow them.
-      requestBody:
-        description: The username of the user to follow
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              description: username schema
-              properties:
-                targetUsername: { $ref: '#/components/schemas/User/properties/username' }
-      responses:
-        "201":
-          description: User followed successfully
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/User' }
-        "400": { $ref: '#/components/responses/BadRequest' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "404": { $ref: '#/components/responses/NotFound' }
-  /users/{username}/follows/{targetUsername}:
-    parameters:
-      - $ref: '#/components/parameters/usernameParam'
-      - $ref: '#/components/parameters/targetUsernameParam'
-    delete:
-      tags: [ "follows" ]
-      operationId: unfollowUser
-      summary: Unfollow a user
-      description: Given a user's username, unfollow them.
-      responses:
-        "204": { $ref: '#/components/responses/NoContent' }
-        "400": { $ref: '#/components/responses/BadRequest' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "404": { $ref: '#/components/responses/NotFound' }
-  /users/{username}/photos:
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/stream:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
     get:
-      tags: [ "photos" ]
+      tags: [ "User" ]
       operationId: getMyStream
       summary: Retrieve the content stream of the user
       description: |-
@@ -451,8 +378,103 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/bans:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+    put:
+      tags: [ "Ban" ]
+      operationId: banUser
+      summary: Ban a user
+      description: Given a user's username, ban them.
+      requestBody:
+        description: The username of the user to ban
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: username schema
+              properties:
+                targetUsername: { $ref: '#/components/schemas/User/properties/username' }
+      responses:
+        "201":
+          description: User banned successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/bans/{targetUsername}:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/targetUsernameParam'
+    delete:
+      tags: [ "Ban" ]
+      operationId: unbanUser
+      summary: Unban a user
+      description: Given a user's username, unban them.
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/follows:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+    put:
+      tags: [ "Follow" ]
+      operationId: followUser
+      summary: Follow a user
+      description: Given a user's username, follow them.
+      requestBody:
+        description: The username of the user to follow
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: username schema
+              properties:
+                targetUsername: { $ref: '#/components/schemas/User/properties/username' }
+      responses:
+        "201":
+          description: User followed successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/follows/{targetUsername}:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/targetUsernameParam'
+    delete:
+      tags: [ "Follow" ]
+      operationId: unfollowUser
+      summary: Unfollow a user
+      description: Given a user's username, unfollow them.
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/photos:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
     post:
-      tags: [ "photos" ]
+      tags: [ "Photo" ]
       operationId: uploadPhoto
       summary: Create a post with the given photo
       description: |-
@@ -470,18 +492,26 @@ paths:
                   type: string
                   description: The image file to upload
                   format: binary
+                  minLength: 0
+                  maxLength: 999999999 # This is here to handle warnings, it's not a real limit
                 description: { $ref: '#/components/schemas/Photo/properties/description' }
       responses:
-        "204": { $ref: '#/components/responses/NoContent' }
+        "201":
+          description: Photo uploaded successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Photo' }
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
   /users/{username}/photos/{photoId}:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
       - $ref: '#/components/parameters/photoIdParam'
     delete:
-      tags: [ "photos" ]
+      tags: [ "Photo" ]
       operationId: deletePhoto
       summary: Delete a photo from the current user
       description: |-
@@ -491,12 +521,14 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
   /users/{username}/photos/{photoId}/likes:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
       - $ref: '#/components/parameters/photoIdParam'
-    post:
-      tags: [ "likes" ]
+    put:
+      tags: [ "Like" ]
       operationId: likePhoto
       summary: Like a photo
       description: Given a user's username, and a photo's id, like it.
@@ -511,17 +543,23 @@ paths:
               properties:
                 targetUsername: { $ref: '#/components/schemas/User/properties/username' }
       responses:
-        "204": { $ref: '#/components/responses/NoContent' }
+        "201":
+          description: Photo liked successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Photo' }
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
   /users/{username}/photos/{photoId}/likes/{likeId}:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
       - $ref: '#/components/parameters/photoIdParam'
       - $ref: '#/components/parameters/likeIdParam'
     delete:
-      tags: [ "likes" ]
+      tags: [ "Like" ]
       operationId: unlikePhoto
       summary: Unlike a photo
       description: Given a user's username and a photo's id, unlike it.
@@ -530,12 +568,14 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
   /users/{username}/photos/{photoId}/comments:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
       - $ref: '#/components/parameters/photoIdParam'
     post:
-      tags: [ "comments" ]
+      tags: [ "Comment" ]
       operationId: commentPhoto
       summary: Add a comment to a photo
       description: |-
@@ -552,17 +592,23 @@ paths:
               properties:
                 content: { $ref: '#/components/schemas/Comment/properties/content' }
       responses:
-        "204": { $ref: '#/components/responses/NoContent' }
+        "201":
+          description: Comment added successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Comment' }
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
   /users/{username}/photos/{photoId}/comments/{commentId}:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
       - $ref: '#/components/parameters/photoIdParam'
       - $ref: '#/components/parameters/commentIdParam'
     delete:
-      tags: [ "comments" ]
+      tags: [ "Comment" ]
       operationId: uncommentPhoto
       summary: Remove a comment from a photo
       description: |-
@@ -573,3 +619,4 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
