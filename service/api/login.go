@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"wasaphoto.uniroma1.it/wasaphoto/service/api/reqcontext"
@@ -16,14 +15,12 @@ import (
 func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params, _ reqcontext.RequestContext) {
 	var user User
 	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
-		http.Error(w, fmt.Errorf("unable to decode request body: %w", err).Error(), http.StatusUnprocessableEntity)
+	if handleError(w, "unable to decode request body", http.StatusUnprocessableEntity, err) {
 		return
 	}
 
 	user, err = rt.db.CreateUser(user)
-	if err != nil {
-		http.Error(w, fmt.Errorf("unable to create user: %w", err).Error(), http.StatusInternalServerError)
+	if handleError(w, "unable to create user", http.StatusInternalServerError, err) {
 		return
 	}
 
@@ -32,8 +29,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 
 	// Return the user schema as response
 	err = json.NewEncoder(w).Encode(user)
-	if err != nil {
-		http.Error(w, fmt.Errorf("unable to encode user: %w", err).Error(), http.StatusInternalServerError)
+	if handleError(w, "unable to encode user", http.StatusInternalServerError, err) {
 		return
 	}
 }

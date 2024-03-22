@@ -42,33 +42,43 @@ type AppDatabase interface {
 	// user-db methods
 
 	CreateUser(user User) (User, error)
-	GetUserProfile(username string) (User, error)
-	GetMyStream(userId uint) ([]Photo, error)
-	SetMyUsername(userId uint, newUsername string) error
+	GetUserProfile(user User) (User, error)
+	GetMyStream(user User) ([]Photo, error)
+	SetMyUsername(user User, currentUsername string) (User, error)
+	GetFollowStatus(userId uint, targetUserId uint) (bool, error)
+	GetUserBanStatusByRequester(userId uint, targetUserId uint) (bool, error)
+	GetRequesterBannedByUser(userId uint, targetUserId uint) (bool, error)
 
 	// ban-db methods
 
-	BanUser(userId int, targetUserId int) error
-	UnbanUser(userId int, targetUserId int) error
+	BanUser(userId uint, targetUserId uint) error
+	UnbanUser(userId uint, targetUserId uint) error
 
 	// follow-db methods
 
-	FollowUser(userId int, targetUserId int) error
-	UnfollowUser(userId int, targetUserId int) error
+	GetFollowers(userId uint) ([]uint, error)
+	GetFollowersCount(userId uint) (uint, error)
+	GetFollowing(userId uint) ([]uint, error)
+	GetFollowingCount(userId uint) (uint, error)
+	FollowUser(userId uint, targetUserId uint) error
+	UnfollowUser(userId uint, targetUserId uint) error
 
 	// photo-db methods
 
+	GetPhoto(photoId uint) (Photo, error)
+	GetPhotoCount(userId uint) (uint, error)
 	UploadPhoto(photo Photo) (Photo, error)
-	DeletePhoto(photoId int) error
+	DeletePhoto(photo Photo) error
 
 	// like-db methods
 
-	LikePhoto(userId int, photoId int) error
-	UnlikePhoto(userId int, photoId int) error
+	LikePhoto(userId uint, photoId uint) error
+	UnlikePhoto(userId uint, photoId uint) error
+
 	// comment-db methods
 
-	CommentPhoto(userId int, photoId int, content string) error
-	UncommentPhoto(userId int, photoId int, commentId int) error
+	CommentPhoto(photoId uint, comment Comment) (Comment, error)
+	UncommentPhoto(photoId uint, comment Comment) error
 
 	Ping() error
 }
@@ -85,62 +95,65 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, errors.New("database is required when building a AppDatabase")
 	}
 
-	// Check if table exists. If not, the database is empty, and we need to create the structure
-	var tableName string
-	err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='Users';`).Scan(&tableName)
-	if errors.Is(err, sql.ErrNoRows) {
-		usersDatabase := `CREATE TABLE Users (
-			userId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-			username TEXT NOT NULL UNIQUE
-		);`
-		photosDatabase := `CREATE TABLE Photos (
-			photoId INTEGER NOT NULL PRIMARY KEY,
+	tables := map[string]string{
+		"Users": `CREATE TABLE Users (
+                userId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE
+            );`,
+		"Photos": `CREATE TABLE Photos (
+			photoId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
             owner TEXT NOT NULL,
             image BLOB NOT NULL,
             description TEXT,
             uploadTime DATETIME NOT NULL,
             likeCount INTEGER NOT NULL,
             commentsCount INTEGER NOT NULL,
-            likeStatus BOOLEAN NOT NULL,
 			FOREIGN KEY (owner) REFERENCES Users(userId)
-		);`
-		likesDatabase := `CREATE TABLE Likes (
-            likeId INTEGER NOT NULL PRIMARY KEY,
+		);`,
+		"Likes": `CREATE TABLE Likes (
             userId INTEGER NOT NULL,
             photoId INTEGER NOT NULL,
+            PRIMARY KEY (userId, photoId),
             FOREIGN KEY (userId) REFERENCES Users(userId),
             FOREIGN KEY (photoId) REFERENCES Photos(photoId)
-		);`
-		commentsDatabase := `CREATE TABLE Comments (
-            commentId INTEGER NOT NULL PRIMARY KEY,
+		);`,
+		"Comments": `CREATE TABLE Comments (
+            commentId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
             owner INTEGER NOT NULL,
             content TEXT NOT NULL,
-            userId INTEGER NOT NULL,
             photoId INTEGER NOT NULL,
-            FOREIGN KEY (userId) REFERENCES Users(userId),
+            FOREIGN KEY (owner) REFERENCES Users(userId),
             FOREIGN KEY (photoId) REFERENCES Photos(photoId)
-        );`
-		bansDatabase := `CREATE TABLE Bans (
+        );`,
+		"Bans": `CREATE TABLE Bans (
 			bannedUserId INTEGER NOT NULL,
 			userId INTEGER NOT NULL,
 			PRIMARY KEY (userId, bannedUserId),
             FOREIGN KEY (bannedUserId) REFERENCES Users(userId),
 			FOREIGN KEY (userId) REFERENCES Users(userId)
-		);`
-		followersDatabase := `CREATE TABLE Followers (
+		);`,
+		"Followers": `CREATE TABLE Followers (
 	        followerUserId INTEGER NOT NULL,
             followingUserId INTEGER NOT NULL,
             PRIMARY KEY (followerUserId, followingUserId),
             FOREIGN KEY (followerUserId) REFERENCES Users(userId),
             FOREIGN KEY (followingUserId) REFERENCES Users(userId)
-		);`
+		);`,
+	}
 
-		// Ensure that the tables are created
-		tables := []string{usersDatabase, photosDatabase, likesDatabase, commentsDatabase, bansDatabase, followersDatabase}
-		for _, table := range tables {
-			if _, err = db.Exec(table); err != nil {
-				return nil, fmt.Errorf("error creating database structure: %w", err)
+	// Iterate over the tables map
+	for tableName, createQuery := range tables {
+		// Check if the table exists
+		var name string
+		err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name=?;`, tableName).Scan(&name)
+		if errors.Is(err, sql.ErrNoRows) {
+			// If the table does not exist, create it
+			if _, err = db.Exec(createQuery); err != nil {
+				return nil, fmt.Errorf("error creating `%s` table: %w", tableName, err)
 			}
+		} else if err != nil {
+			// If there was an error checking for the table, return the error
+			return nil, fmt.Errorf("error checking for `%s` table: %w", tableName, err)
 		}
 	}
 
