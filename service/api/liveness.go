@@ -1,9 +1,9 @@
 package api
 
 import (
+	"github.com/Big-Iron-Cheems/WASAPhoto/service/api/reqcontext"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
-	"wasaphoto.uniroma1.it/wasaphoto/service/api/reqcontext"
 )
 
 // liveness is an HTTP handler that checks the API server status. If the server cannot serve requests (e.g., some

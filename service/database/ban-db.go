@@ -3,7 +3,7 @@ package database
 import (
 	"database/sql"
 	"errors"
-	. "wasaphoto.uniroma1.it/wasaphoto/service/model"
+	. "github.com/Big-Iron-Cheems/WASAPhoto/service/model"
 )
 
 // GetBansList returns the list of banned users.

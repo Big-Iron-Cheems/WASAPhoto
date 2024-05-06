@@ -3,9 +3,9 @@ package database
 import (
 	"database/sql"
 	"errors"
+	. "github.com/Big-Iron-Cheems/WASAPhoto/service/model"
 	"sort"
 	"strings"
-	. "wasaphoto.uniroma1.it/wasaphoto/service/model"
 )
 
 /*

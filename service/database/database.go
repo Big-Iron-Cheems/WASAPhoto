@@ -34,7 +34,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	. "wasaphoto.uniroma1.it/wasaphoto/service/model"
+	. "github.com/Big-Iron-Cheems/WASAPhoto/service/model"
 )
 
 // AppDatabase is the high level interface for the DB

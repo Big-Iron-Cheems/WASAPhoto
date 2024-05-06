@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	. "github.com/Big-Iron-Cheems/WASAPhoto/service/model"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
-	. "wasaphoto.uniroma1.it/wasaphoto/service/model"
 )
 
 // usernamePattern is the regex pattern for a valid username.

@@ -2,11 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/Big-Iron-Cheems/WASAPhoto/service/api/reqcontext"
+	. "github.com/Big-Iron-Cheems/WASAPhoto/service/model"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"strconv"
-	"wasaphoto.uniroma1.it/wasaphoto/service/api/reqcontext"
-	. "wasaphoto.uniroma1.it/wasaphoto/service/model"
 )
 
 /*

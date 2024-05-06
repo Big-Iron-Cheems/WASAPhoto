@@ -2,13 +2,13 @@ package api
 
 import (
 	"bytes"
+	"github.com/Big-Iron-Cheems/WASAPhoto/service/api/reqcontext"
 	"github.com/gofrs/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"strings"
-	"wasaphoto.uniroma1.it/wasaphoto/service/api/reqcontext"
 )
 
 // httpRouterHandler is the signature for functions that accepts a reqcontext.RequestContext in addition to those

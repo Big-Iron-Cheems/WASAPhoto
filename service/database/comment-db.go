@@ -1,6 +1,6 @@
 package database
 
-import . "wasaphoto.uniroma1.it/wasaphoto/service/model"
+import . "github.com/Big-Iron-Cheems/WASAPhoto/service/model"
 
 // GetPhotoComments Get all comments under a photo.
 func (db *appdbimpl) GetPhotoComments(photoId uint) ([]Comment, error) {

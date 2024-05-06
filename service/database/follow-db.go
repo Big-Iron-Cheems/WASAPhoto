@@ -3,7 +3,7 @@ package database
 import (
 	"database/sql"
 	"errors"
-	. "wasaphoto.uniroma1.it/wasaphoto/service/model"
+	. "github.com/Big-Iron-Cheems/WASAPhoto/service/model"
 )
 
 // GetFollowersList returns the list of followers of a user.

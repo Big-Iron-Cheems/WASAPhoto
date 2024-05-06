@@ -1,5 +1,4 @@
-module wasaphoto.uniroma1.it/wasaphoto
-// TODO: update to github.com/Big-Iron-Cheems/WASAPhoto
+module github.com/Big-Iron-Cheems/WASAPhoto
 
 go 1.17
 

@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Big-Iron-Cheems/WASAPhoto/service/api/reqcontext"
+	. "github.com/Big-Iron-Cheems/WASAPhoto/service/model"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"strconv"
-	"wasaphoto.uniroma1.it/wasaphoto/service/api/reqcontext"
-	. "wasaphoto.uniroma1.it/wasaphoto/service/model"
 )
 
 // maxPageSize is the maximum number of users that can be retrieved in a single request.
