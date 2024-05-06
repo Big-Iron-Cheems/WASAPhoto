@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
+	"strings"
 	"wasaphoto.uniroma1.it/wasaphoto/service/api/reqcontext"
 )
 
@@ -65,12 +66,17 @@ func logRequestDetails(r *http.Request, ctx reqcontext.RequestContext) {
 
 	// Log the body
 	if r.Body != nil {
-		bodyBytes, err := io.ReadAll(r.Body)
-		if err != nil {
-			ctx.Logger.WithError(err).Error("Error reading request body")
-		} else {
-			ctx.Logger.Infof("Body: %s", string(bodyBytes))
-			r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes)) // Replace the body, as it gets consumed when read
+		contentType := r.Header.Get("Content-Type")
+		if contentType != "" && strings.HasPrefix(contentType, "application/json") {
+			bodyBytes, err := io.ReadAll(r.Body)
+			if err != nil {
+				ctx.Logger.WithError(err).Error("Error reading request body")
+			} else {
+				ctx.Logger.Infof("Body: %s", string(bodyBytes))
+				r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+			}
+		} else if contentType != "" {
+			ctx.Logger.Info("Body contains unexpected MIME type, not logging")
 		}
 	}
 }

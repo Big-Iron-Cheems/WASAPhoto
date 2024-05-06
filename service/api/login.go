@@ -8,28 +8,41 @@ import (
 	. "wasaphoto.uniroma1.it/wasaphoto/service/model"
 )
 
-// doLogin If the user does not exist, it will be created, and an identifier is returned.
-// If the user exists, the user identifier is returned.
-//
-//	curl -X POST http://localhost:3000/session -H 'Content-Type: application/json' -d '{"username": "USERNAME"}'
+/*
+doLogin If the user does not exist, it will be created, and an identifier is returned.
+If the user exists, the user identifier is returned.
+
+	curl -X POST http://localhost:3000/session -H 'Content-Type: application/json' -d '{"username": "USERNAME"}'
+*/
 func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params, _ reqcontext.RequestContext) {
 	var user User
+
+	// Decode the request body into the user schema
 	err := json.NewDecoder(r.Body).Decode(&user)
-	if handleError(w, "unable to decode request body", http.StatusUnprocessableEntity, err) {
+	if err != nil {
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	// Validate the username
+	if err = validateString(usernamePattern, user.Username); err != nil {
+		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	// Check if the user exists or log in the user
 	user, err = rt.db.CreateUser(user)
-	if handleError(w, "unable to create user", http.StatusInternalServerError, err) {
+	if err != nil {
+		respondWithJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
 
 	// Return the user schema as response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(user)
-	if handleError(w, "unable to encode user", http.StatusInternalServerError, err) {
+	if err != nil {
+		respondWithJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }

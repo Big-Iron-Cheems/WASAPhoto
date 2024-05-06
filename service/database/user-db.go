@@ -3,115 +3,123 @@ package database
 import (
 	"database/sql"
 	"errors"
-	"fmt"
+	"sort"
+	"strings"
 	. "wasaphoto.uniroma1.it/wasaphoto/service/model"
 )
 
-// CreateUser creates a new user in the database.
-//
-// If the user already exists, it returns the user schema.
-// Otherwise, it creates it and returns the user schema.
+/*
+CreateUser creates a new user in the database.
+
+If the user already exists, it returns the user schema.
+Otherwise, it creates it and returns the user schema.
+*/
 func (db *appdbimpl) CreateUser(user User) (User, error) {
-	res, err := db.c.Exec("INSERT INTO Users(username) VALUES (?)", user.Username)
+	// Try to insert a new user
+	_, err := db.c.Exec(`
+        INSERT OR IGNORE INTO Users(username)
+        VALUES (?)`,
+		user.Username,
+	)
 	if err != nil {
-		if err = db.c.QueryRow(`SELECT userId, username FROM Users WHERE username = ?`, user.Username).Scan(&user.UserId, &user.Username); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return user, fmt.Errorf("user `%s` does not exist", user.Username)
-			}
-		}
-		return user, nil
+		return User{}, err
 	}
-	lastInsertID, err := res.LastInsertId()
+
+	// Fetch the user details using GetUserProfile
+	user, err = db.GetUserProfile(user)
 	if err != nil {
-		return user, err
+		return User{}, err
 	}
-	user.UserId = uint(lastInsertID)
+
 	return user, nil
 }
 
-// GetUserProfile retrieves a user's profile from the database.
+// GetAllUsers retrieves all users from the database via paginated requests.
+func (db *appdbimpl) GetAllUsers(page int, pageSize int) ([]User, error) {
+	offset := (page - 1) * pageSize
+	rows, err := db.c.Query(`
+        SELECT userId, username FROM Users
+        LIMIT ? OFFSET ?`,
+		pageSize, offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := make([]User, 0)
+	for rows.Next() {
+		var user User
+		if err = rows.Scan(&user.UserId, &user.Username); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
+}
+
+// GetUserProfile retrieves a user's profile from the database given their username.
 func (db *appdbimpl) GetUserProfile(user User) (User, error) {
-	if err := db.c.QueryRow(`SELECT userId, username FROM Users WHERE username = ?`, user.Username).Scan(&user.UserId, &user.Username); err != nil {
+	if err := db.c.QueryRow(`
+        SELECT userId, username FROM Users
+        WHERE username = ?`,
+		user.Username,
+	).Scan(&user.UserId, &user.Username); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return user, fmt.Errorf("user `%s` does not exist", user.Username)
+			return user, &UserNotFoundByUsernameError{Username: user.Username}
 		}
 	}
 	return user, nil
 }
 
-// GetMyStream retrieves the content stream of a user from the database given its id.
+/*
+GetMyStream retrieves the content stream of a user from the database given its id.
+The stream is composed of the photos uploaded by the users followed by the user.
+The photos are sorted by date, from newest to oldest.
+*/
 func (db *appdbimpl) GetMyStream(user User) ([]Photo, error) {
-	panic("not implemented") // TODO
+	// Get the list of users followed by the user
+	following, err := db.GetFollowingList(user.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	// For each user, get the list of photos they have uploaded
+	totalPhotos := make([]Photo, 0)
+	for _, followingUser := range following {
+		photos, err := db.GetPhotoList(followingUser.UserId)
+		if err != nil {
+			return nil, err
+		}
+		totalPhotos = append(totalPhotos, photos...)
+	}
+
+	// Sort the photos by date, from newest to oldest
+	sort.Slice(totalPhotos, func(i, j int) bool {
+		return totalPhotos[i].UploadTime > totalPhotos[j].UploadTime
+	})
+
+	return totalPhotos, nil
 }
 
 // SetMyUsername updates the username of a user in the database given its id.
 func (db *appdbimpl) SetMyUsername(user User, currentUsername string) (User, error) {
-	res, err := db.c.Exec("UPDATE Users SET username = ? WHERE username = ?", user.Username, currentUsername)
+	_, err := db.c.Exec(`
+        UPDATE Users
+        SET username = ?
+        WHERE username = ?`,
+		user.Username, currentUsername,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return user, fmt.Errorf("user `%s` does not exist", user.Username)
+			return user, &UserNotFoundByUsernameError{Username: currentUsername}
+		}
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return user, &UsernameTakenError{Username: user.Username}
 		}
 		return user, err
 	}
 
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return user, err
-	}
-	if rowsAffected == 0 {
-		return user, fmt.Errorf("user `%s` does not exist", user.Username)
-	}
-
-	// Fetch the updated user from the database
-	updatedUser, err := db.GetUserProfile(User{Username: user.Username}) // TODO: find if this can be sent in the req along the username
-	if err != nil {
-		return user, fmt.Errorf("unable to fetch updated user profile: %w", err)
-	}
-
-	return updatedUser, nil
-}
-
-/*
-GetFollowStatus returns the follow status between two users.
-
-If the user with id `userId` follows the user with id `targetUserId`, it returns true.
-*/
-func (db *appdbimpl) GetFollowStatus(userId uint, targetUserId uint) (bool, error) {
-	var res bool
-	if err := db.c.QueryRow(`SELECT EXISTS(SELECT 1 FROM Followers WHERE followerUserId = ? AND followingUserId = ?)`, userId, targetUserId).Scan(&res); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, errors.New("user does not exist")
-		}
-	}
-	return res, nil
-}
-
-/*
-GetUserBanStatusByRequester returns the ban status between two users.
-
-If the user with id `targetUserId` is banned by the user with id `userId`, it returns true.
-*/
-func (db *appdbimpl) GetUserBanStatusByRequester(userId uint, targetUserId uint) (bool, error) {
-	var res bool
-	if err := db.c.QueryRow(`SELECT EXISTS(SELECT 1 FROM Bans WHERE userId = ? AND bannedUserId = ?)`, userId, targetUserId).Scan(&res); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, errors.New("user does not exist")
-		}
-	}
-	return res, nil
-}
-
-/*
-GetRequesterBannedByUser returns the ban status between two users.
-
-If the user with id `userId` is banned by the user with id `targetUserId`, it returns true.
-*/
-func (db *appdbimpl) GetRequesterBannedByUser(userId uint, targetUserId uint) (bool, error) {
-	var res bool
-	if err := db.c.QueryRow(`SELECT EXISTS(SELECT 1 FROM Bans WHERE userId = ? AND bannedUserId = ?)`, targetUserId, userId).Scan(&res); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, errors.New("user does not exist")
-		}
-	}
-	return res, nil
+	return user, nil
 }

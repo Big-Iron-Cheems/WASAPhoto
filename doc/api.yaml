@@ -26,7 +26,7 @@ components:
           example: CoolUsername42
           minLength: 3
           maxLength: 32
-          pattern: '^.*?$'
+          pattern: '^[A-Za-z0-9_\-]{3,32}$'
       required: [ "userId", "username" ]
 
     Profile:
@@ -51,7 +51,12 @@ components:
           type: integer
           example: 42
           minimum: 0
-      required: [ "userId", "username", "photoCount", "followersCount", "followingCount" ]
+        bannedCount:
+          description: The amount of users banned by this user
+          type: integer
+          example: 42
+          minimum: 0
+      required: [ "userId", "username", "photoCount", "followersCount", "followingCount", "bannedCount" ]
 
     Comment:
       title: Comment
@@ -64,15 +69,16 @@ components:
           example: 1234
           minimum: 0
           readOnly: true
-        owner: { $ref: '#/components/schemas/User/properties/userId' }
+        ownerId: { $ref: '#/components/schemas/User/properties/userId' }
+        ownerUsername: { $ref: '#/components/schemas/User/properties/username' }
         content:
           type: string
           description: This is the content of the comment written by the owner
           example: "That's a nice image!"
-          pattern: '^.*?$'
+          pattern: '^[\p{L}\p{N}\p{M}\p{P}\p{S} ]{1,256}$'
           minLength: 1
           maxLength: 256
-      required: [ "commentId", "owner", "content" ]
+      required: [ "commentId", "ownerId", "content" ]
 
     Photo:
       title: Photo
@@ -85,24 +91,32 @@ components:
           example: 1234
           minimum: 0
           readOnly: true
-        owner: { $ref: '#/components/schemas/User/properties/userId' }
+        ownerId: { $ref: '#/components/schemas/User/properties/userId' }
+        ownerUsername: { $ref: '#/components/schemas/User/properties/username' }
         image:
           type: string
           format: binary
           description: Binary data of the image
           minLength: 0
           maxLength: 999999999 # This is here to handle warnings, it's not a real limit
-        description:
+        mimeType:
           type: string
-          description: Description or caption for the image
+          description: The MIME type of the image
+          example: "image/jpeg"
+          pattern: '^[A-Za-z0-9_\-]{3,}$'
+          minLength: 3
+          maxLength: 32
+        caption:
+          type: string
+          description: Caption for the image
           example: "A beautiful landscape"
-          pattern: '^.*?$'
+          pattern: '^[\p{L}\p{N}\p{M}\p{P}\p{S} ]{0,32}$'
           minLength: 0
-          maxLength: 256
+          maxLength: 32
         uploadTime:
           type: string
           format: date-time
-          description: The date and time at which this photo was uploaded
+          description: The date and time at which this photo was uploaded, RFC 3339 format
           example: 2017-07-21T17:32:28Z
         likeCount:
           type: integer
@@ -114,7 +128,7 @@ components:
           description: Number of comments for the image
           example: 42
           minimum: 0
-      required: [ "photoId", "owner", "image", "uploadTime", "likeCount", "commentsCount" ]
+      required: [ "photoId", "ownerId", "image", "uploadTime", "likeCount", "commentsCount" ]
 
     Error:
       title: Error
@@ -123,9 +137,9 @@ components:
       type: object
       properties:
         code:
-          type: string
+          type: integer
           description: An HTTP error code
-          example: "404"
+          example: 404
         message:
           type: string
           description: A brief message describing the error code
@@ -200,6 +214,18 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    # 409
+    Conflict:
+      description: The request could not be completed due to a conflict with the current state of the resource.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    # 422
+    UnprocessableEntity:
+      description: The request was well-formed but was unable to be followed due to semantic errors.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     # 500
     InternalServerError:
       description: The server encountered an internal error. Further info in server logs.
@@ -250,30 +276,86 @@ paths:
               type: object
               description: login schema
               properties:
-                name:
-                  type: string
-                  description: The name of the user
-                  example: Maria
-                  pattern: '^.*?$'
-                  minLength: 3
-                  maxLength: 16
-      responses: # TODO: return the auth token along with the userId, so that they can be stored in localStorage
+                username: { $ref: '#/components/schemas/User/properties/username' }
+      responses:
         "201":
           description: User log-in action successful
           content:
             application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "422": { $ref: '#/components/responses/UnprocessableEntity' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+      security: [ ]
+
+  /stream:
+    get:
+      tags: [ "User" ]
+      operationId: getMyStream
+      summary: Retrieve the content stream of the user
+      description: |-
+        Given a user's id, retrieve the content stream.
+
+        The stream is composed of entries that have images, likes and comments.
+        These entries are sorted in reverse chronological order.
+      responses:
+        "200":
+          description: Successfully retrieved image stream for this user
+          content:
+            application/json:
               schema:
                 type: object
-                description: user schema
+                description: photo stream schema
                 properties:
-                  identifier:
-                    # change here if you decide to use an integer or any other type of identifier
-                    type: string
-                    description: Unique identifier for the user
-                    example: "#U1234"
-                    minLength: 3
-                    maxLength: 16
-      security: [ ]
+                  photos:
+                    type: array
+                    description: The list of photos this user uploaded
+                    items: { $ref: '#/components/schemas/Photo' }
+                    uniqueItems: true
+                    minItems: 0
+                    maxItems: 99999
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users:
+    get:
+      tags: [ "User" ]
+      operationId: getAllUsers
+      summary: Retrieve all users
+      description: Fetch all users in the database via paginated requests.
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                description: list of users
+                items: { $ref: '#/components/schemas/User' }
+                uniqueItems: true
+                minItems: 0
+                maxItems: 99999
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}:
     parameters:
@@ -303,6 +385,8 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}/profile:
@@ -322,39 +406,7 @@ paths:
               schema: { $ref: '#/components/schemas/Profile' }
         "400": { $ref: '#/components/responses/BadRequest' }
         "404": { $ref: '#/components/responses/NotFound' }
-        "500": { $ref: '#/components/responses/InternalServerError' }
-
-  /users/{username}/stream:
-    parameters:
-      - $ref: '#/components/parameters/usernameParam'
-    get:
-      tags: [ "User" ]
-      operationId: getMyStream
-      summary: Retrieve the content stream of the user
-      description: |-
-        Given a user's id, retrieve the content stream.
-
-        The stream is composed of entries that have images, likes and comments.
-        These entries are sorted in reverse chronological order.
-      responses:
-        "200":
-          description: Successfully retrieved image stream for this user
-          content:
-            application/json:
-              schema:
-                type: object
-                description: photo stream schema
-                properties:
-                  photos:
-                    type: array
-                    description: The list of photos this user uploaded
-                    items: { $ref: '#/components/schemas/Photo' }
-                    uniqueItems: true
-                    minItems: 0
-                    maxItems: 99999
-        "400": { $ref: '#/components/responses/BadRequest' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "404": { $ref: '#/components/responses/NotFound' }
+        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}/bans:
@@ -372,15 +424,91 @@ paths:
           application/json:
             schema:
               type: object
-              description: userId schema
+              description: username schema
               properties:
-                targetUsername: { $ref: '#/components/schemas/User/properties/username' }
+                username: { $ref: '#/components/schemas/User/properties/username' }
       responses:
         "201":
           description: User banned successfully
           content:
             application/json:
               schema: { $ref: '#/components/schemas/User' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "422": { $ref: '#/components/responses/UnprocessableEntity' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/bans/count:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+    get:
+      tags: [ "Ban" ]
+      operationId: getBansCount
+      summary: Get the count of users banned by the current user
+      description: Get the count of users banned by the current user
+      responses:
+        "200":
+          description: Successfully retrieved the count of banned users
+          content:
+            application/json:
+              schema:
+                type: integer
+                description: count of banned users
+                example: 42
+                minimum: 0
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/bans/list:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+    get:
+      tags: [ "Ban" ]
+      operationId: getBansList
+      summary: Get the list of users banned by the current user
+      description: Get the list of users banned by the current user
+      responses:
+        "200":
+          description: Successfully retrieved the list of banned users
+          content:
+            application/json:
+              schema:
+                type: array
+                description: list of usernames
+                items: { $ref: '#/components/schemas/User/properties/username' }
+                uniqueItems: true
+                minItems: 0
+                maxItems: 99999
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/bans/list/{targetUsername}:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/targetUsernameParam'
+    get:
+      tags: [ "Ban" ]
+      operationId: getBanStatus
+      summary: Check if a user is banned
+      description: |-
+        Given a user's username, check if they are banned.
+        In this case, the target user is the 1st parameter.
+      responses:
+        "200":
+          description: User is banned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isFollowing:
+                    type: boolean
+                    description: Whether the user has banned the target user
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
@@ -400,9 +528,60 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
+        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/follows:
+  /users/{username}/following/count:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+    get:
+      tags: [ "Follow" ]
+      operationId: getFollowingCount
+      summary: Get the count of users followed by the current user
+      description: Get the count of users followed by the current user
+      responses:
+        "200":
+          description: Successfully retrieved the count of followed users
+          content:
+            application/json:
+              schema:
+                type: integer
+                description: count of followed users
+                example: 42
+                minimum: 0
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "422": { $ref: '#/components/responses/UnprocessableEntity' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/following/list:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+    get:
+      tags: [ "Follow" ]
+      operationId: getFollowingList
+      summary: Get the list of users followed by the current user
+      description: Get the list of users followed by the current user
+      responses:
+        "200":
+          description: Successfully retrieved the list of followed users
+          content:
+            application/json:
+              schema:
+                type: array
+                description: list of usernames
+                items: { $ref: '#/components/schemas/User/properties/username' }
+                uniqueItems: true
+                minItems: 0
+                maxItems: 99999
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "422": { $ref: '#/components/responses/UnprocessableEntity' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/followers:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
     post:
@@ -417,9 +596,9 @@ paths:
           application/json:
             schema:
               type: object
-              description: userId schema
+              description: username schema
               properties:
-                targetUsername: { $ref: '#/components/schemas/User/properties/username' }
+                username: { $ref: '#/components/schemas/User/properties/username' }
       responses:
         "201":
           description: User followed successfully
@@ -429,9 +608,88 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
+        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/follows/{targetUsername}:
+  /users/{username}/followers/count:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+    get:
+      tags: [ "Follow" ]
+      operationId: getFollowersCount
+      summary: Get the count of users following the current user
+      description: Get the count of users following the current user
+      responses:
+        "200":
+          description: Successfully retrieved the count of followers
+          content:
+            application/json:
+              schema:
+                type: integer
+                description: count of followers
+                example: 42
+                minimum: 0
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "422": { $ref: '#/components/responses/UnprocessableEntity' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/followers/list:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+    get:
+      tags: [ "Follow" ]
+      operationId: getFollowersList
+      summary: Get the list of users following the current user
+      description: Get the list of users following the current user
+      responses:
+        "200":
+          description: Successfully retrieved the list of followers
+          content:
+            application/json:
+              schema:
+                type: array
+                description: list of usernames
+                items: { $ref: '#/components/schemas/User/properties/username' }
+                uniqueItems: true
+                minItems: 0
+                maxItems: 99999
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "422": { $ref: '#/components/responses/UnprocessableEntity' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/followers/list/{targetUsername}:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/targetUsernameParam'
+    get:
+      tags: [ "Follow" ]
+      operationId: getFollowStatus
+      summary: Check if a user is following another
+      description: |-
+        Given a user's username, check if they are following another user.
+        In this case, the target user is the 1st parameter.
+      responses:
+        "200":
+          description: User is following the target user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isFollowing:
+                    type: boolean
+                    description: Whether the user is following the target user
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "422": { $ref: '#/components/responses/UnprocessableEntity' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/followers/{targetUsername}:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
       - $ref: '#/components/parameters/targetUsernameParam'
@@ -445,11 +703,34 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
+        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}/photos:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
+    get:
+      tags: [ "Photo" ]
+      operationId: getMyPhotos
+      summary: Retrieve the photos of the user
+      description: |-
+        Given a user's username, retrieve all the photos uploaded by them.
+      responses:
+        "200":
+          description: Successfully retrieved photos
+          content:
+            application/json:
+              schema:
+                type: array
+                description: list of photos
+                items: { $ref: '#/components/schemas/Photo' }
+                uniqueItems: true
+                minItems: 0
+                maxItems: 99999
+          "400": { $ref: '#/components/responses/BadRequest' }
+          "401": { $ref: '#/components/responses/Unauthorized' }
+          "404": { $ref: '#/components/responses/NotFound' }
+          "500": { $ref: '#/components/responses/InternalServerError' }
     post:
       tags: [ "Photo" ]
       operationId: uploadPhoto
@@ -465,13 +746,9 @@ paths:
               type: object
               description: upload schema
               properties:
-                image:
-                  type: string
-                  description: The image file to upload
-                  format: binary
-                  minLength: 0
-                  maxLength: 999999999 # This is here to handle warnings, it's not a real limit
-                description: { $ref: '#/components/schemas/Photo/properties/description' }
+                image: { $ref: '#/components/schemas/Photo/properties/image' }
+                mimeType: { $ref: '#/components/schemas/Photo/properties/mimeType' }
+                caption: { $ref: '#/components/schemas/Photo/properties/caption' }
       responses:
         "201":
           description: Photo uploaded successfully
@@ -481,6 +758,7 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
+        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}/photos/{photoId}:
@@ -520,6 +798,60 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
+  /users/{username}/photos/{photoId}/likes/list:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/photoIdParam'
+    get:
+      tags: [ "Like" ]
+      operationId: getPhotoLikers
+      summary: Retrieve the IDs of the users that liked a photo
+      description: |-
+        Given the id of a photo from a user, retrieve all the IDs of the users that liked it.
+      responses:
+        "200":
+          description: Successfully retrieved likers
+          content:
+            application/json:
+              schema:
+                type: array
+                description: list of likes
+                items: { $ref: '#/components/schemas/User/properties/userId' }
+                uniqueItems: true
+                minItems: 0
+                maxItems: 99999
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
+  /users/{username}/photos/{photoId}/likes/list/{targetUsername}:
+    parameters:
+      - $ref: '#/components/parameters/usernameParam'
+      - $ref: '#/components/parameters/photoIdParam'
+      - $ref: '#/components/parameters/targetUsernameParam'
+    get:
+      tags: [ "Like" ]
+      operationId: getLikeStatus
+      summary: Check if a user liked a photo
+      description: |-
+        Given a user's username, check if they liked a photo.
+      responses:
+        "200":
+          description: User liked the photo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hasLiked:
+                    type: boolean
+                    description: Whether the user liked the photo
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
+
   /users/{username}/photos/{photoId}/likes/{likeId}:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
@@ -541,6 +873,28 @@ paths:
     parameters:
       - $ref: '#/components/parameters/usernameParam'
       - $ref: '#/components/parameters/photoIdParam'
+    get:
+      tags: [ "Comment" ]
+      operationId: getPhotoComments
+      summary: Retrieve the comments of a photo
+      description: |-
+        Given the id of a photo from a user, retrieve all its comments.
+      responses:
+        "200":
+          description: Successfully retrieved comments
+          content:
+            application/json:
+              schema:
+                type: array
+                description: list of comments
+                items: { $ref: '#/components/schemas/Comment' }
+                uniqueItems: true
+                minItems: 0
+                maxItems: 99999
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalServerError' }
     post:
       tags: [ "Comment" ]
       operationId: commentPhoto

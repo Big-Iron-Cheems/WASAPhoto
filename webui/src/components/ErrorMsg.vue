@@ -1,14 +1,12 @@
-<script>
-export default {
-	props: ['msg']
-}
+<script setup>
+const props = defineProps(['msg'])
 </script>
 
 <template>
-	<div class="alert alert-danger" role="alert">
-		{{ msg }}
-	</div>
+    <div class="alert alert-danger" role="alert">
+        {{ msg.message || msg }}
+    </div>
 </template>
 
-<style>
+<style scoped>
 </style>

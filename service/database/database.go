@@ -42,41 +42,49 @@ type AppDatabase interface {
 	// user-db methods
 
 	CreateUser(user User) (User, error)
+	GetAllUsers(page int, pageSize int) ([]User, error)
 	GetUserProfile(user User) (User, error)
 	GetMyStream(user User) ([]Photo, error)
 	SetMyUsername(user User, currentUsername string) (User, error)
-	GetFollowStatus(userId uint, targetUserId uint) (bool, error)
-	GetUserBanStatusByRequester(userId uint, targetUserId uint) (bool, error)
-	GetRequesterBannedByUser(userId uint, targetUserId uint) (bool, error)
 
 	// ban-db methods
 
+	GetBansList(userId uint) ([]User, error)
+	GetBansCount(userId uint) (uint, error)
+	GetBanStatus(userId uint, targetUserId uint) (bool, error)
 	BanUser(userId uint, targetUserId uint) error
 	UnbanUser(userId uint, targetUserId uint) error
+	DeleteCommentsByBannedUser(userId uint, bannedUserId uint) error
+	DeleteLikesByBannedUser(userId uint, bannedUserId uint) error
 
 	// follow-db methods
 
-	GetFollowers(userId uint) ([]uint, error)
+	GetFollowersList(userId uint) ([]User, error)
 	GetFollowersCount(userId uint) (uint, error)
-	GetFollowing(userId uint) ([]uint, error)
+	GetFollowingList(userId uint) ([]User, error)
 	GetFollowingCount(userId uint) (uint, error)
+	GetFollowStatus(userId uint, targetUserId uint) (bool, error)
 	FollowUser(userId uint, targetUserId uint) error
 	UnfollowUser(userId uint, targetUserId uint) error
 
 	// photo-db methods
 
 	GetPhoto(photoId uint) (Photo, error)
+	GetPhotoList(userId uint) ([]Photo, error)
 	GetPhotoCount(userId uint) (uint, error)
 	UploadPhoto(photo Photo) (Photo, error)
 	DeletePhoto(photo Photo) error
 
 	// like-db methods
 
+	GetPhotoLikers(photoId uint) ([]uint, error)
 	LikePhoto(userId uint, photoId uint) error
 	UnlikePhoto(userId uint, photoId uint) error
+	GetLikeStatus(userId uint, photoId uint) (bool, error)
 
 	// comment-db methods
 
+	GetPhotoComments(photoId uint) ([]Comment, error)
 	CommentPhoto(photoId uint, comment Comment) (Comment, error)
 	UncommentPhoto(photoId uint, comment Comment) error
 
@@ -102,13 +110,14 @@ func New(db *sql.DB) (AppDatabase, error) {
             );`,
 		"Photos": `CREATE TABLE Photos (
 			photoId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-            owner TEXT NOT NULL,
+            ownerId INTEGER NOT NULL,
             image BLOB NOT NULL,
-            description TEXT,
+            mimeType TEXT NOT NULL,
+            caption TEXT,
             uploadTime DATETIME NOT NULL,
             likeCount INTEGER NOT NULL,
             commentsCount INTEGER NOT NULL,
-			FOREIGN KEY (owner) REFERENCES Users(userId)
+			FOREIGN KEY (ownerId) REFERENCES Users(userId)
 		);`,
 		"Likes": `CREATE TABLE Likes (
             userId INTEGER NOT NULL,
@@ -119,10 +128,10 @@ func New(db *sql.DB) (AppDatabase, error) {
 		);`,
 		"Comments": `CREATE TABLE Comments (
             commentId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-            owner INTEGER NOT NULL,
+            ownerId INTEGER NOT NULL,
             content TEXT NOT NULL,
             photoId INTEGER NOT NULL,
-            FOREIGN KEY (owner) REFERENCES Users(userId),
+            FOREIGN KEY (ownerId) REFERENCES Users(userId),
             FOREIGN KEY (photoId) REFERENCES Photos(photoId)
         );`,
 		"Bans": `CREATE TABLE Bans (
@@ -145,7 +154,10 @@ func New(db *sql.DB) (AppDatabase, error) {
 	for tableName, createQuery := range tables {
 		// Check if the table exists
 		var name string
-		err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name=?;`, tableName).Scan(&name)
+		err := db.QueryRow(`
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name=?;`, tableName,
+		).Scan(&name)
 		if errors.Is(err, sql.ErrNoRows) {
 			// If the table does not exist, create it
 			if _, err = db.Exec(createQuery); err != nil {

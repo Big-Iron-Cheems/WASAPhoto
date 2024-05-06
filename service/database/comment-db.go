@@ -2,10 +2,38 @@ package database
 
 import . "wasaphoto.uniroma1.it/wasaphoto/service/model"
 
+// GetPhotoComments Get all comments under a photo.
+func (db *appdbimpl) GetPhotoComments(photoId uint) ([]Comment, error) {
+	rows, err := db.c.Query(`
+		SELECT Comments.commentId, Comments.ownerId, Users.username, Comments.content
+		FROM Comments
+		INNER JOIN Users ON Comments.ownerId = Users.userId
+		WHERE Comments.photoId = ?`, photoId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	comments := make([]Comment, 0)
+	for rows.Next() {
+		var comment Comment
+		err = rows.Scan(&comment.CommentId, &comment.OwnerId, &comment.OwnerUsername, &comment.Content)
+		if err != nil {
+			return nil, err
+		}
+
+		comments = append(comments, comment)
+	}
+
+	return comments, nil
+}
+
 // CommentPhoto Add a comment under a photo.
 func (db *appdbimpl) CommentPhoto(photoId uint, comment Comment) (Comment, error) {
-	res, err := db.c.Exec("INSERT INTO Comments (owner, photoId, content) VALUES (?, ?, ?)",
-		comment.Owner, photoId, comment.Content,
+	res, err := db.c.Exec(`
+        INSERT INTO Comments (ownerId, photoId, content)
+        VALUES (?, ?, ?)`,
+		comment.OwnerId, photoId, comment.Content,
 	)
 	if err != nil {
 		return Comment{}, err
@@ -17,7 +45,12 @@ func (db *appdbimpl) CommentPhoto(photoId uint, comment Comment) (Comment, error
 	}
 
 	// Increment the CommentsCount field of the photo
-	_, err = db.c.Exec("UPDATE Photos SET CommentsCount = CommentsCount + 1 WHERE PhotoId = ?", photoId)
+	_, err = db.c.Exec(`
+        UPDATE Photos
+        SET commentsCount = commentsCount + 1
+        WHERE photoId = ?`,
+		photoId,
+	)
 	if err != nil {
 		return Comment{}, err
 	}
@@ -26,17 +59,25 @@ func (db *appdbimpl) CommentPhoto(photoId uint, comment Comment) (Comment, error
 	return comment, nil
 }
 
+// UncommentPhoto Remove a comment from a photo.
 func (db *appdbimpl) UncommentPhoto(photoId uint, comment Comment) error {
 	// Delete the comment
-	_, err := db.c.Exec("DELETE FROM Comments WHERE CommentId = ? AND Owner = ? AND PhotoId = ?",
-		comment.CommentId, comment.Owner, photoId,
+	_, err := db.c.Exec(`
+        DELETE FROM Comments
+        WHERE commentId = ? AND ownerId = ? AND photoId = ?`,
+		comment.CommentId, comment.OwnerId, photoId,
 	)
 	if err != nil {
 		return err
 	}
 
 	// Decrement the CommentsCount field of the photo
-	_, err = db.c.Exec("UPDATE Photos SET CommentsCount = CommentsCount - 1 WHERE PhotoId = ?", photoId)
+	_, err = db.c.Exec(`
+        UPDATE Photos
+        SET commentsCount = commentsCount - 1
+        WHERE PhotoId = ?`,
+		photoId,
+	)
 	if err != nil {
 		return err
 	}
