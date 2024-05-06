@@ -2,17 +2,17 @@
 # Run using `sudo docker run -it --rm -p 8080:80 frontend:latest`
 
 # Set base image
-FROM node:lts AS builder
+FROM node:lts-alpine AS builder
 
 # Copy Vue.js project
 WORKDIR /webui
 COPY webui .
 
 # Build Vue.js project into HTML/CSS/JS
-RUN npm run build-prod
+RUN npm run build-prod && npm cache clean --force && rm -rf node_modules
 
 # Create final image
-FROM nginx:stable
+FROM nginx:alpine
 
 # Copy built Vue.js project into Nginx
 COPY --from=builder /webui/dist /usr/share/nginx/html
