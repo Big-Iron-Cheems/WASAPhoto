@@ -1,0 +1,18 @@
+# Build using `sudo docker build -t frontend:latest -f Dockerfile.frontend .`
+# Run using `sudo docker run -it --rm -p 8080:80 frontend:latest`
+
+# Set base image
+FROM node:lts AS builder
+
+# Copy Vue.js project
+WORKDIR /webui
+COPY webui .
+
+# Build Vue.js project into HTML/CSS/JS
+RUN npm run build-prod
+
+# Create final image
+FROM nginx:stable
+
+# Copy built Vue.js project into Nginx
+COPY --from=builder /webui/dist /usr/share/nginx/html

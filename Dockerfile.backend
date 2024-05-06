@@ -1,0 +1,27 @@
+# Build using `sudo docker build -t backend:latest -f Dockerfile.backend .`
+# Run using `sudo docker run -it --rm -p 3000:3000 -p 4000:4000 backend:latest`
+
+# Set the base image
+FROM golang:1.19 AS builder
+
+# Set the working directory
+WORKDIR /src/
+
+# Copy the source code into the container
+COPY . .
+
+# Build the backend
+RUN go build -o /app/webapi ./cmd/webapi
+
+# Create final image
+FROM debian:latest
+
+# Expose the ports used by the webapi
+EXPOSE 3000 4000
+
+# Copy the webapi binary from the builder image
+WORKDIR /app/
+COPY --from=builder /app/webapi ./
+
+# Run the webapi
+CMD ["/app/webapi"]

@@ -74,10 +74,12 @@ func (rt *_router) uploadPhoto(w http.ResponseWriter, r *http.Request, ps httpro
 	photo.OwnerId = header
 
 	// Validate the username
-	if err = validateString(usernamePattern, ps.ByName("username")); err != nil {
+	username := ps.ByName("username")
+	if err = validateString(usernamePattern, username); err != nil {
 		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
+	photo.OwnerUsername = username
 
 	// Parse the multipart form data
 	err = r.ParseMultipartForm(10 << 20) // limit your maxMultipartMemory

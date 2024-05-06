@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	. "github.com/Big-Iron-Cheems/WASAPhoto/service/model"
+	"time"
 )
 
 // GetPhoto Get a photo by its id.
@@ -89,10 +90,12 @@ func (db *appdbimpl) GetPhotoCount(userId uint) (uint, error) {
 
 // UploadPhoto Upload a photo.
 func (db *appdbimpl) UploadPhoto(photo Photo) (Photo, error) {
+	uploadTime := time.Now().UTC().Format(time.RFC3339)
+
 	res, err := db.c.Exec(`
         INSERT INTO Photos (ownerId, image, mimeType, caption, uploadTime, likeCount, commentsCount)
-        VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), ?, ?)`,
-		photo.OwnerId, photo.Image, photo.MimeType, photo.Caption, photo.LikeCount, photo.CommentsCount,
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		photo.OwnerId, photo.Image, photo.MimeType, photo.Caption, uploadTime, photo.LikeCount, photo.CommentsCount,
 	)
 	if err != nil {
 		return Photo{}, err
@@ -104,6 +107,7 @@ func (db *appdbimpl) UploadPhoto(photo Photo) (Photo, error) {
 	}
 
 	photo.PhotoId = uint(id)
+	photo.UploadTime = uploadTime
 	return photo, nil
 }
 
