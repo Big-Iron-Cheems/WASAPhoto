@@ -1,0 +1,25 @@
+# Run using `sudo docker compose up -d`
+# List running containers using `sudo docker compose ps`
+# View real-time logs using `sudo docker compose logs -f <service-name>`
+# Stop using `sudo docker compose stop`
+# Delete using `sudo docker compose down`
+
+services:
+  backend:
+    container_name: backend
+    build:
+      dockerfile: Dockerfile.backend
+      context: .
+    image: backend:latest
+    ports:
+      - "3000:3000"
+      - "4000:4000"
+
+  frontend:
+    container_name: frontend
+    build:
+      dockerfile: Dockerfile.frontend
+      context: .
+    image: frontend:latest
+    ports:
+      - "8080:80"

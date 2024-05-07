@@ -1,0 +1,12 @@
+.idea/
+.git/
+demo
+doc
+.editorconfig
+.gitignore
+LICENSE
+README.md
+*.log
+*.iml
+*.test
+*.out
