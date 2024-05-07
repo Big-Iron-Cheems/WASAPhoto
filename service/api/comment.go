@@ -55,6 +55,7 @@ commentPhoto Add a comment under a photo.
 */
 func (rt *_router) commentPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var photo Photo
+	var user User
 	var comment Comment
 
 	// Get the requesters data from the auth header
@@ -64,13 +65,21 @@ func (rt *_router) commentPhoto(w http.ResponseWriter, r *http.Request, ps httpr
 		return
 	}
 	comment.OwnerId = header
-	comment.OwnerUsername = ps.ByName("username")
 
 	// Validate the username
-	if err = validateString(usernamePattern, comment.OwnerUsername); err != nil {
+	if err = validateString(usernamePattern, ps.ByName("username")); err != nil {
 		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
+
+	// Get the commenter's data from the db
+	user.UserId = header
+	user, err = rt.db.GetUserProfile(user)
+	if err != nil {
+		respondWithJSONError(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	comment.OwnerUsername = user.Username
 
 	// Get the photo's data from the db
 	photoIdUint64, err := strconv.ParseUint(ps.ByName("photoId"), 10, 64)

@@ -59,17 +59,33 @@ func (db *appdbimpl) GetAllUsers(page int, pageSize int) ([]User, error) {
 	return users, nil
 }
 
-// GetUserProfile retrieves a user's profile from the database given their username.
+/*
+GetUserProfile retrieves a user's profile from the database given their username.
+If the username was not set in the user struct, it retrieves the user's profile given their id.
+*/
 func (db *appdbimpl) GetUserProfile(user User) (User, error) {
-	if err := db.c.QueryRow(`
+	if user.Username != "" {
+		if err := db.c.QueryRow(`
         SELECT userId, username FROM Users
         WHERE username = ?`,
-		user.Username,
-	).Scan(&user.UserId, &user.Username); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return user, &UserNotFoundByUsernameError{Username: user.Username}
+			user.Username,
+		).Scan(&user.UserId, &user.Username); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return user, &UserNotFoundByUsernameError{Username: user.Username}
+			}
+		}
+	} else {
+		if err := db.c.QueryRow(`
+        SELECT userId, username FROM Users
+        WHERE userId = ?`,
+			user.UserId,
+		).Scan(&user.UserId, &user.Username); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return user, &UserNotFoundByIdError{UserId: user.UserId}
+			}
 		}
 	}
+
 	return user, nil
 }
 

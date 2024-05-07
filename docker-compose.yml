@@ -1,4 +1,4 @@
-# Run using `sudo docker compose up -d`
+# Run using `sudo docker compose up -d` (add --build to rebuild)
 # List running containers using `sudo docker compose ps`
 # View real-time logs using `sudo docker compose logs -f <service-name>`
 # Stop using `sudo docker compose stop`
