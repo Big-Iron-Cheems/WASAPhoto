@@ -30,7 +30,7 @@ func (rt *_router) getPhotoList(w http.ResponseWriter, r *http.Request, ps httpr
 
 	// Validate the username
 	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -76,7 +76,7 @@ func (rt *_router) uploadPhoto(w http.ResponseWriter, r *http.Request, ps httpro
 	// Validate the username
 	username := ps.ByName("username")
 	if err = validateString(usernamePattern, username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	photo.OwnerUsername = username
@@ -111,7 +111,7 @@ func (rt *_router) uploadPhoto(w http.ResponseWriter, r *http.Request, ps httpro
 	// Validate the caption
 	if len(caption) > 0 {
 		if err = validateString(captionPattern, caption); err != nil {
-			respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+			respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 	}

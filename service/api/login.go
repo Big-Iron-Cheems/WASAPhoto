@@ -26,7 +26,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 
 	// Validate the username
 	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

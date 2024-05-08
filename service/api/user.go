@@ -95,7 +95,7 @@ func (rt *_router) getUserProfile(w http.ResponseWriter, r *http.Request, ps htt
 
 	// Validate the username
 	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -216,7 +216,7 @@ func (rt *_router) setMyUsername(w http.ResponseWriter, r *http.Request, ps http
 
 	// Validate the new username
 	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

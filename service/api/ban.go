@@ -9,9 +9,9 @@ import (
 )
 
 /*
-getBansList Get the count of bans for a user via username.
+getBansList Get the list of users a user has banned via username.
 
-	curl -X GET http://localhost:3000/users/USERNAME/bans/count -H 'Authorization : Bearer USER_ID'
+	curl -X GET http://localhost:3000/users/USERNAME/bans/list -H 'Authorization : Bearer USER_ID'
 */
 func (rt *_router) getBansList(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var user User
@@ -43,40 +43,6 @@ func (rt *_router) getBansList(w http.ResponseWriter, r *http.Request, ps httpro
 }
 
 /*
-getBansCount Get the count of bans for a user via username.
-
-	curl -X GET http://localhost:3000/users/USERNAME/bans/count -H 'Authorization : Bearer USER_ID'
-*/
-func (rt *_router) getBansCount(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
-	var user User
-
-	// Get the requesters data from the auth header
-	header, err := parseAuthHeader(r.Header.Get("Authorization"))
-	if err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	user.UserId = header
-	user.Username = ps.ByName("username")
-
-	// Get the bans count
-	count, err := rt.db.GetBansCount(user.UserId)
-	if err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Return the bans count
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(count)
-	if err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-/*
 getBanStatus Get the ban status of a user via username.
 That is, check if the user in the 1st param has banned the user in the 2nd param.
 
@@ -96,14 +62,14 @@ func (rt *_router) getBanStatus(w http.ResponseWriter, r *http.Request, ps httpr
 	// Validate the 1st username
 	user.Username = ps.ByName("username")
 	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Validate the 2nd username
 	targetUser.Username = ps.ByName("targetUsername")
 	if err = validateString(usernamePattern, targetUser.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -158,7 +124,7 @@ func (rt *_router) banUser(w http.ResponseWriter, r *http.Request, ps httprouter
 
 	// Validate the target username (path)
 	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -171,7 +137,7 @@ func (rt *_router) banUser(w http.ResponseWriter, r *http.Request, ps httprouter
 
 	// Validate the target username (body)
 	if err = validateString(usernamePattern, targetUser.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -219,14 +185,14 @@ func (rt *_router) unbanUser(w http.ResponseWriter, r *http.Request, ps httprout
 
 	// Validate the username (path)
 	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	targetUser.Username = ps.ByName("targetUsername")
 	// Validate the target username (path)
 	if err = validateString(usernamePattern, targetUser.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

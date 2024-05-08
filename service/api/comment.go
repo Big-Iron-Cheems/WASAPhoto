@@ -68,7 +68,7 @@ func (rt *_router) commentPhoto(w http.ResponseWriter, r *http.Request, ps httpr
 
 	// Validate the username
 	if err = validateString(usernamePattern, ps.ByName("username")); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -98,7 +98,7 @@ func (rt *_router) commentPhoto(w http.ResponseWriter, r *http.Request, ps httpr
 
 	// Validate the comment
 	if err = validateString(commentPattern, comment.Content); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

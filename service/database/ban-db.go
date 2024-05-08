@@ -16,7 +16,7 @@ func (db *appdbimpl) GetBansList(userId uint) ([]User, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var bannedIds []uint
 	for rows.Next() {
@@ -39,6 +39,10 @@ func (db *appdbimpl) GetBansList(userId uint) ([]User, error) {
 			return nil, err
 		}
 		bannedUsers = append(bannedUsers, User{UserId: bannedId, Username: username})
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return bannedUsers, nil

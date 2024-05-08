@@ -18,8 +18,6 @@ const props = defineProps({
     'isFollowing': Boolean,
     'hasBannedUser': Boolean,
     'isBannedByProfileUser': Boolean,
-    'showFollowing': Boolean,
-    'showBanned': Boolean,
 })
 
 let showFollowers = ref(false);

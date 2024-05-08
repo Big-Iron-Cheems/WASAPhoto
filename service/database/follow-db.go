@@ -16,7 +16,7 @@ func (db *appdbimpl) GetFollowersList(userId uint) ([]User, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var followerIds []uint
 	for rows.Next() {
@@ -39,6 +39,10 @@ func (db *appdbimpl) GetFollowersList(userId uint) ([]User, error) {
 			return nil, err
 		}
 		followers = append(followers, User{UserId: followerId, Username: username})
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return followers, nil
@@ -69,7 +73,7 @@ func (db *appdbimpl) GetFollowingList(userId uint) ([]User, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var followingIds []uint
 	for rows.Next() {
@@ -92,6 +96,10 @@ func (db *appdbimpl) GetFollowingList(userId uint) ([]User, error) {
 			return nil, err
 		}
 		following = append(following, User{UserId: followingId, Username: username})
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return following, nil

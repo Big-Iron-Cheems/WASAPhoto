@@ -27,7 +27,7 @@ func (rt *_router) getFollowersList(w http.ResponseWriter, r *http.Request, ps h
 
 	// Validate the username
 	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -42,46 +42,6 @@ func (rt *_router) getFollowersList(w http.ResponseWriter, r *http.Request, ps h
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(followers)
-	if err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-/*
-getFollowersCount Get the count of followers for a user via username.
-
-	curl -X GET http://localhost:3000/users/USERNAME/followers/count -H 'Authorization : Bearer USER_ID'
-*/
-func (rt *_router) getFollowersCount(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
-	var user User
-
-	// Get the requesters data from the auth header
-	header, err := parseAuthHeader(r.Header.Get("Authorization"))
-	if err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	user.UserId = header
-	user.Username = ps.ByName("username")
-
-	// Validate the username
-	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
-		return
-	}
-
-	// Get the followers count
-	count, err := rt.db.GetFollowersCount(user.UserId)
-	if err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Return the followers count
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(count)
 	if err != nil {
 		respondWithJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -107,7 +67,7 @@ func (rt *_router) getFollowingList(w http.ResponseWriter, r *http.Request, ps h
 
 	// Validate the username
 	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -122,46 +82,6 @@ func (rt *_router) getFollowingList(w http.ResponseWriter, r *http.Request, ps h
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(following)
-	if err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-/*
-getFollowingCount Get the count of users a user is following via username.
-
-	curl -X GET http://localhost:3000/users/USERNAME/following/count -H 'Authorization : Bearer USER_ID'
-*/
-func (rt *_router) getFollowingCount(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
-	var user User
-
-	// Get the requesters data from the auth header
-	header, err := parseAuthHeader(r.Header.Get("Authorization"))
-	if err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	user.UserId = header
-	user.Username = ps.ByName("username")
-
-	// Validate the username
-	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
-		return
-	}
-
-	// Get the following count
-	count, err := rt.db.GetFollowingCount(user.UserId)
-	if err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Return the following count
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(count)
 	if err != nil {
 		respondWithJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -188,14 +108,14 @@ func (rt *_router) getFollowStatus(w http.ResponseWriter, r *http.Request, ps ht
 	// Validate the 1st username
 	user.Username = ps.ByName("username")
 	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Validate the 2nd username
 	targetUser.Username = ps.ByName("targetUsername")
 	if err = validateString(usernamePattern, targetUser.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -250,7 +170,7 @@ func (rt *_router) followUser(w http.ResponseWriter, r *http.Request, ps httprou
 
 	// Validate the username
 	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -263,7 +183,7 @@ func (rt *_router) followUser(w http.ResponseWriter, r *http.Request, ps httprou
 
 	// Validate the target username
 	if err = validateString(usernamePattern, targetUser.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -310,14 +230,14 @@ func (rt *_router) unfollowUser(w http.ResponseWriter, r *http.Request, ps httpr
 
 	// Validate the username
 	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Validate the target username
 	targetUser.Username = ps.ByName("targetUsername")
 	if err = validateString(usernamePattern, targetUser.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

@@ -12,7 +12,7 @@ func (db *appdbimpl) GetPhotoComments(photoId uint) ([]Comment, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	comments := make([]Comment, 0)
 	for rows.Next() {
@@ -23,6 +23,10 @@ func (db *appdbimpl) GetPhotoComments(photoId uint) ([]Comment, error) {
 		}
 
 		comments = append(comments, comment)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return comments, nil

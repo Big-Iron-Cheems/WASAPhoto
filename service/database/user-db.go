@@ -45,7 +45,7 @@ func (db *appdbimpl) GetAllUsers(page int, pageSize int) ([]User, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	users := make([]User, 0)
 	for rows.Next() {
@@ -54,6 +54,10 @@ func (db *appdbimpl) GetAllUsers(page int, pageSize int) ([]User, error) {
 			return nil, err
 		}
 		users = append(users, user)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return users, nil

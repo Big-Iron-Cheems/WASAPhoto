@@ -10,7 +10,7 @@ func (db *appdbimpl) GetPhotoLikers(photoId uint) ([]uint, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	likes := make([]uint, 0)
 	for rows.Next() {
@@ -21,6 +21,10 @@ func (db *appdbimpl) GetPhotoLikers(photoId uint) ([]uint, error) {
 		}
 
 		likes = append(likes, likerId)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return likes, nil

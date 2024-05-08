@@ -103,7 +103,7 @@ components:
           type: string
           description: The MIME type of the image
           example: "image/jpeg"
-          pattern: '^[A-Za-z0-9_\-]{3,}$'
+          pattern: '^[A-Za-z0-9_\-\/]{3,}$'
           minLength: 3
           maxLength: 32
         caption:
@@ -220,12 +220,6 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
-    # 422
-    UnprocessableEntity:
-      description: The request was well-formed but was unable to be followed due to semantic errors.
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/Error' }
     # 500
     InternalServerError:
       description: The server encountered an internal error. Further info in server logs.
@@ -284,7 +278,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/User' }
         "400": { $ref: '#/components/responses/BadRequest' }
-        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
       security: [ ]
 
@@ -386,7 +379,6 @@ paths:
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
         "409": { $ref: '#/components/responses/Conflict' }
-        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}/profile:
@@ -406,7 +398,6 @@ paths:
               schema: { $ref: '#/components/schemas/Profile' }
         "400": { $ref: '#/components/responses/BadRequest' }
         "404": { $ref: '#/components/responses/NotFound' }
-        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}/bans:
@@ -433,30 +424,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/User' }
-        "400": { $ref: '#/components/responses/BadRequest' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "404": { $ref: '#/components/responses/NotFound' }
-        "422": { $ref: '#/components/responses/UnprocessableEntity' }
-        "500": { $ref: '#/components/responses/InternalServerError' }
-
-  /users/{username}/bans/count:
-    parameters:
-      - $ref: '#/components/parameters/usernameParam'
-    get:
-      tags: [ "Ban" ]
-      operationId: getBansCount
-      summary: Get the count of users banned by the current user
-      description: Get the count of users banned by the current user
-      responses:
-        "200":
-          description: Successfully retrieved the count of banned users
-          content:
-            application/json:
-              schema:
-                type: integer
-                description: count of banned users
-                example: 42
-                minimum: 0
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
@@ -505,6 +472,7 @@ paths:
             application/json:
               schema:
                 type: object
+                description: Schema representing the ban status of a user
                 properties:
                   isFollowing:
                     type: boolean
@@ -528,31 +496,6 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-        "422": { $ref: '#/components/responses/UnprocessableEntity' }
-        "500": { $ref: '#/components/responses/InternalServerError' }
-
-  /users/{username}/following/count:
-    parameters:
-      - $ref: '#/components/parameters/usernameParam'
-    get:
-      tags: [ "Follow" ]
-      operationId: getFollowingCount
-      summary: Get the count of users followed by the current user
-      description: Get the count of users followed by the current user
-      responses:
-        "200":
-          description: Successfully retrieved the count of followed users
-          content:
-            application/json:
-              schema:
-                type: integer
-                description: count of followed users
-                example: 42
-                minimum: 0
-        "400": { $ref: '#/components/responses/BadRequest' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "404": { $ref: '#/components/responses/NotFound' }
-        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}/following/list:
@@ -578,7 +521,6 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}/followers:
@@ -608,31 +550,6 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-        "422": { $ref: '#/components/responses/UnprocessableEntity' }
-        "500": { $ref: '#/components/responses/InternalServerError' }
-
-  /users/{username}/followers/count:
-    parameters:
-      - $ref: '#/components/parameters/usernameParam'
-    get:
-      tags: [ "Follow" ]
-      operationId: getFollowersCount
-      summary: Get the count of users following the current user
-      description: Get the count of users following the current user
-      responses:
-        "200":
-          description: Successfully retrieved the count of followers
-          content:
-            application/json:
-              schema:
-                type: integer
-                description: count of followers
-                example: 42
-                minimum: 0
-        "400": { $ref: '#/components/responses/BadRequest' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "404": { $ref: '#/components/responses/NotFound' }
-        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}/followers/list:
@@ -658,7 +575,6 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}/followers/list/{targetUsername}:
@@ -679,6 +595,7 @@ paths:
             application/json:
               schema:
                 type: object
+                description: Schema representing the follow status of a user
                 properties:
                   isFollowing:
                     type: boolean
@@ -686,7 +603,6 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}/followers/{targetUsername}:
@@ -703,7 +619,6 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}/photos:
@@ -711,7 +626,7 @@ paths:
       - $ref: '#/components/parameters/usernameParam'
     get:
       tags: [ "Photo" ]
-      operationId: getMyPhotos
+      operationId: getPhotoList
       summary: Retrieve the photos of the user
       description: |-
         Given a user's username, retrieve all the photos uploaded by them.
@@ -758,7 +673,6 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
-        "422": { $ref: '#/components/responses/UnprocessableEntity' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
   /users/{username}/photos/{photoId}:
@@ -843,6 +757,7 @@ paths:
             application/json:
               schema:
                 type: object
+                description: Schema representing the like status of a post for a user
                 properties:
                   hasLiked:
                     type: boolean

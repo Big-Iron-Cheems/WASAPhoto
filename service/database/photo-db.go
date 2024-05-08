@@ -50,7 +50,7 @@ func (db *appdbimpl) GetPhotoList(userId uint) ([]Photo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	photos := make([]Photo, 0)
 	for rows.Next() {
@@ -70,6 +70,11 @@ func (db *appdbimpl) GetPhotoList(userId uint) ([]Photo, error) {
 		}
 		photos = append(photos, photo)
 	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return photos, nil
 }
 

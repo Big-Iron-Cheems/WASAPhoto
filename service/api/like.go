@@ -68,7 +68,7 @@ func (rt *_router) likePhoto(w http.ResponseWriter, r *http.Request, ps httprout
 
 	// Validate the username
 	if err = validateString(usernamePattern, liker.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -160,14 +160,14 @@ func (rt *_router) getLikeStatus(w http.ResponseWriter, r *http.Request, ps http
 
 	// Validate the target username
 	if err = validateString(usernamePattern, targetUser.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Validate the username
 	user.Username = ps.ByName("username")
 	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
