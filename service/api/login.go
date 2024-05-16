@@ -12,7 +12,7 @@ import (
 doLogin If the user does not exist, it will be created, and an identifier is returned.
 If the user exists, the user identifier is returned.
 
-	curl -X POST http://localhost:3000/session -H 'Content-Type: application/json' -d '{"username": "USERNAME"}'
+	curl -X POST BASE_URL/session -H 'Content-Type: application/json' -d '{"username": "USERNAME"}'
 */
 func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params, _ reqcontext.RequestContext) {
 	var user User

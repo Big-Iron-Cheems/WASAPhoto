@@ -12,7 +12,7 @@ import (
 /*
 getPhotoComments Get all comments under a photo.
 
-	curl -X GET http://localhost:3000/users/USERNAME/photos/PHOTO_ID/comments -H 'Authorization: Bearer USER_ID' -H 'Content-Type: application/json'
+	curl -X GET BASE_URL/users/USERNAME/photos/PHOTO_ID/comments -H 'Authorization: Bearer USER_ID' -H 'Content-Type: application/json'
 */
 func (rt *_router) getPhotoComments(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var photo Photo
@@ -51,7 +51,7 @@ func (rt *_router) getPhotoComments(w http.ResponseWriter, r *http.Request, ps h
 /*
 commentPhoto Add a comment under a photo.
 
-	curl -X POST http://localhost:3000/users/USERNAME/photos/PHOTO_ID/comments -H 'Authorization: Bearer USER_ID' -H 'Content-Type: application/json' -d '{"content": "CONTENT"}'
+	curl -X POST BASE_URL/users/USERNAME/photos/PHOTO_ID/comments -H 'Authorization: Bearer USER_ID' -H 'Content-Type: application/json' -d '{"content": "CONTENT"}'
 */
 func (rt *_router) commentPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var photo Photo
@@ -122,7 +122,7 @@ func (rt *_router) commentPhoto(w http.ResponseWriter, r *http.Request, ps httpr
 /*
 uncommentPhoto Remove a comment from a photo.
 
-	curl -X DELETE http://localhost:3000/users/USERNAME/photos/PHOTO_ID/comments/COMMENT_ID -H 'Authorization: Bearer USER_ID'
+	curl -X DELETE BASE_URL/users/USERNAME/photos/PHOTO_ID/comments/COMMENT_ID -H 'Authorization: Bearer USER_ID'
 */
 func (rt *_router) uncommentPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var photo Photo

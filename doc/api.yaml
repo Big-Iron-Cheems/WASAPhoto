@@ -712,33 +712,6 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "500": { $ref: '#/components/responses/InternalServerError' }
 
-  /users/{username}/photos/{photoId}/likes/list:
-    parameters:
-      - $ref: '#/components/parameters/usernameParam'
-      - $ref: '#/components/parameters/photoIdParam'
-    get:
-      tags: [ "Like" ]
-      operationId: getPhotoLikers
-      summary: Retrieve the IDs of the users that liked a photo
-      description: |-
-        Given the id of a photo from a user, retrieve all the IDs of the users that liked it.
-      responses:
-        "200":
-          description: Successfully retrieved likers
-          content:
-            application/json:
-              schema:
-                type: array
-                description: list of likes
-                items: { $ref: '#/components/schemas/User/properties/userId' }
-                uniqueItems: true
-                minItems: 0
-                maxItems: 99999
-        "400": { $ref: '#/components/responses/BadRequest' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "404": { $ref: '#/components/responses/NotFound' }
-        "500": { $ref: '#/components/responses/InternalServerError' }
-
   /users/{username}/photos/{photoId}/likes/list/{targetUsername}:
     parameters:
       - $ref: '#/components/parameters/usernameParam'

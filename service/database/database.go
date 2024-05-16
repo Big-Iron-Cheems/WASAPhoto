@@ -77,7 +77,6 @@ type AppDatabase interface {
 
 	// like-db methods
 
-	GetPhotoLikers(photoId uint) ([]uint, error)
 	LikePhoto(userId uint, photoId uint) error
 	UnlikePhoto(userId uint, photoId uint) error
 	GetLikeStatus(userId uint, photoId uint) (bool, error)

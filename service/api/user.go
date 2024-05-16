@@ -17,7 +17,7 @@ const maxPageSize = 100
 /*
 getAllUsers retrieves all users from the database via paginated requests.
 
-	curl -X GET http://localhost:3000/users?page=1&pageSize=50 -H 'Authorization Bearer USER_ID'
+	curl -X GET BASE_URL/users?page=1&pageSize=50 -H 'Authorization Bearer USER_ID'
 */
 func (rt *_router) getAllUsers(w http.ResponseWriter, r *http.Request, _ httprouter.Params, _ reqcontext.RequestContext) {
 	pageStr := r.URL.Query().Get("page")
@@ -73,7 +73,7 @@ func (rt *_router) getAllUsers(w http.ResponseWriter, r *http.Request, _ httprou
 /*
 getUserProfile Given a user's username, retrieve all the public info available.
 
-	curl -X GET http://localhost:3000/users/USERNAME/profile -H 'Authorization: Bearer USER_ID'
+	curl -X GET BASE_URL/users/USERNAME/profile -H 'Authorization: Bearer USER_ID'
 */
 func (rt *_router) getUserProfile(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var user User
@@ -153,7 +153,7 @@ getMyStream Given a user's id, retrieve the content stream.
 The stream is composed of Photo entries.
 These entries are sorted in reverse chronological order.
 
-	curl -X GET http://localhost:3000/stream -H 'Authorization: Bearer USER_ID'
+	curl -X GET BASE_URL/stream -H 'Authorization: Bearer USER_ID'
 */
 func (rt *_router) getMyStream(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var user User
@@ -186,7 +186,7 @@ func (rt *_router) getMyStream(w http.ResponseWriter, r *http.Request, ps httpro
 /*
 setMyUsername Given a user's username, update its username.
 
-	curl -X PUT http://localhost:3000/users/USERNAME -H 'Authorization: Bearer USER_ID' -H 'Content-Type: application/json' -d '{"username": "NEW_USERNAME"}'
+	curl -X PUT BASE_URL/users/USERNAME -H 'Authorization: Bearer USER_ID' -H 'Content-Type: application/json' -d '{"username": "NEW_USERNAME"}'
 */
 func (rt *_router) setMyUsername(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var user User

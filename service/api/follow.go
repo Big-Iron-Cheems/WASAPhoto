@@ -11,7 +11,7 @@ import (
 /*
 getFollowersList Get the list of followers for a user via username.
 
-	curl -X GET http://localhost:3000/users/USERNAME/followers/list -H 'Authorization: Bearer USER_ID'
+	curl -X GET BASE_URL/users/USERNAME/followers/list -H 'Authorization: Bearer USER_ID'
 */
 func (rt *_router) getFollowersList(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var user User
@@ -51,7 +51,7 @@ func (rt *_router) getFollowersList(w http.ResponseWriter, r *http.Request, ps h
 /*
 getFollowingList Get the list of users a user is following via username.
 
-	curl -X GET http://localhost:3000/users/USERNAME/following/list -H 'Authorization : Bearer USER_ID'
+	curl -X GET BASE_URL/users/USERNAME/following/list -H 'Authorization : Bearer USER_ID'
 */
 func (rt *_router) getFollowingList(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var user User
@@ -92,7 +92,7 @@ func (rt *_router) getFollowingList(w http.ResponseWriter, r *http.Request, ps h
 getFollowStatus Get the follow status of a user via username.
 That is, check if the user in the 1st param is following the user in the 2nd param.
 
-	curl -X GET http://localhost:3000/users/USERNAME/followers/list/TARGET_USERNAME -H 'Authorization: Bearer USER_ID'
+	curl -X GET BASE_URL/users/USERNAME/followers/list/TARGET_USERNAME -H 'Authorization: Bearer USER_ID'
 */
 func (rt *_router) getFollowStatus(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var user User
@@ -153,7 +153,7 @@ func (rt *_router) getFollowStatus(w http.ResponseWriter, r *http.Request, ps ht
 /*
 followUser Add a user to your following list via username.
 
-	curl -X POST http://localhost:3000/users/USERNAME/followers -H 'Authorization: Bearer USER_ID' -H 'Content-Type: application/json' -d '{"username": "TARGET_USERNAME"}'
+	curl -X POST BASE_URL/users/USERNAME/followers -H 'Authorization: Bearer USER_ID' -H 'Content-Type: application/json' -d '{"username": "TARGET_USERNAME"}'
 */
 func (rt *_router) followUser(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var user User
@@ -213,7 +213,7 @@ func (rt *_router) followUser(w http.ResponseWriter, r *http.Request, ps httprou
 /*
 unfollowUser Remove a user from your following list via username.
 
-	curl -X DELETE http://localhost:3000/users/USERNAME/followers/TARGET_USERNAME -H 'Authorization: Bearer USER_ID'
+	curl -X DELETE BASE_URL/users/USERNAME/followers/TARGET_USERNAME -H 'Authorization: Bearer USER_ID'
 */
 func (rt *_router) unfollowUser(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var user User

@@ -10,48 +10,9 @@ import (
 )
 
 /*
-getPhotoLikers Get all the IDs of the users that liked a photo
-
-	curl -X GET http://localhost:3000/users/USERNAME/photos/PHOTO_ID/likes/list -H 'Authorization: Bearer USER_ID' -H 'Content-Type: application/json'
-*/
-func (rt *_router) getPhotoLikers(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
-	var photo Photo
-
-	// Get the requesters data from the auth header
-	_, err := parseAuthHeader(r.Header.Get("Authorization"))
-	if err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Get the photo's ID from the path
-	photoIdUint64, err := strconv.ParseUint(ps.ByName("photoId"), 10, 64)
-	if err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	photo.PhotoId = uint(photoIdUint64)
-
-	// Get the likes from the db
-	likes, err := rt.db.GetPhotoLikers(photo.PhotoId)
-	if err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Return the likes
-	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(likes)
-	if err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-/*
 likePhoto Add a like to a photo.
 
-	curl -X POST http://localhost:3000/users/USERNAME/photos/PHOTO_ID/likes -H 'Authorization: Bearer USER_ID'
+	curl -X POST BASE_URL/users/USERNAME/photos/PHOTO_ID/likes -H 'Authorization: Bearer USER_ID'
 */
 func (rt *_router) likePhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var liker User
@@ -105,7 +66,7 @@ func (rt *_router) likePhoto(w http.ResponseWriter, r *http.Request, ps httprout
 /*
 unlikePhoto Remove a like from a photo.
 
-	curl -X DELETE http://localhost:3000/users/USERNAME/photos/PHOTO_ID/likes/LIKER_ID -H 'Authorization: Bearer USER_ID'
+	curl -X DELETE BASE_URL/users/USERNAME/photos/PHOTO_ID/likes/LIKER_ID -H 'Authorization: Bearer USER_ID'
 */
 func (rt *_router) unlikePhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var unliker User
@@ -142,7 +103,7 @@ func (rt *_router) unlikePhoto(w http.ResponseWriter, r *http.Request, ps httpro
 /*
 getLikeStatus Get the like status of a user for a photo.
 
-	curl -X GET http://localhost:3000/users/USERNAME/photos/PHOTO_ID/likes/list/TARGET_USERNAME -H 'Authorization: Bearer USER_ID'
+	curl -X GET BASE_URL/users/USERNAME/photos/PHOTO_ID/likes/list/TARGET_USERNAME -H 'Authorization: Bearer USER_ID'
 */
 func (rt *_router) getLikeStatus(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var user User

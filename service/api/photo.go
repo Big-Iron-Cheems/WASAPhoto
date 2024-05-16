@@ -14,7 +14,7 @@ import (
 /*
 getPhotoList Get the list of photos uploaded by a user.
 
-	curl -X GET http://localhost:3000/users/USERNAME/photos -H 'Authorization Bearer USER_ID' -H 'Content-Type: application/json'
+	curl -X GET BASE_URL/users/USERNAME/photos -H 'Authorization Bearer USER_ID' -H 'Content-Type: application/json'
 */
 func (rt *_router) getPhotoList(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var user User
@@ -60,7 +60,7 @@ func (rt *_router) getPhotoList(w http.ResponseWriter, r *http.Request, ps httpr
 /*
 uploadPhoto Upload a photo to the website and create a new post.
 
-	curl -X POST http://localhost:3000/users/USERNAME/photos -H 'Authorization: Bearer USER_ID' -H 'Content-Type: multipart/form-data' -F 'image=@/path/to/photo' -F 'caption=CAPTION'
+	curl -X POST BASE_URL/users/USERNAME/photos -H 'Authorization: Bearer USER_ID' -H 'Content-Type: multipart/form-data' -F 'image=@/path/to/photo' -F 'caption=CAPTION'
 */
 func (rt *_router) uploadPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var photo Photo
@@ -137,7 +137,7 @@ func (rt *_router) uploadPhoto(w http.ResponseWriter, r *http.Request, ps httpro
 /*
 deletePhoto Delete an uploaded photo from the website, along with its comments and likes.
 
-	curl -X DELETE http://localhost:3000/users/USERNAME/photos/PHOTO_ID -H 'Authorization: Bearer USER_ID'
+	curl -X DELETE BASE_URL/users/USERNAME/photos/PHOTO_ID -H 'Authorization: Bearer USER_ID'
 */
 func (rt *_router) deletePhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params, _ reqcontext.RequestContext) {
 	var photo Photo

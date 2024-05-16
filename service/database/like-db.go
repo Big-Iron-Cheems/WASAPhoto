@@ -1,35 +1,5 @@
 package database
 
-// GetPhotoLikers Get all the IDs of the users that liked a photo
-func (db *appdbimpl) GetPhotoLikers(photoId uint) ([]uint, error) {
-	rows, err := db.c.Query(`
-        SELECT userId FROM Likes
-        WHERE photoId = ?`,
-		photoId,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-
-	likes := make([]uint, 0)
-	for rows.Next() {
-		var likerId uint
-		err = rows.Scan(&likerId)
-		if err != nil {
-			return nil, err
-		}
-
-		likes = append(likes, likerId)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return likes, nil
-}
-
 // LikePhoto Add a like to a photo.
 func (db *appdbimpl) LikePhoto(userId uint, photoId uint) error {
 	_, err := db.c.Exec(`

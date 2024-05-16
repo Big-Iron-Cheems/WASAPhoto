@@ -34,7 +34,6 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.DELETE("/users/:username/photos/:photoId", rt.wrap(rt.deletePhoto))
 
 	// Like operations
-	rt.router.GET("/users/:username/photos/:photoId/likes/list", rt.wrap(rt.getPhotoLikers))
 	rt.router.GET("/users/:username/photos/:photoId/likes/list/:targetUsername", rt.wrap(rt.getLikeStatus))
 	rt.router.POST("/users/:username/photos/:photoId/likes", rt.wrap(rt.likePhoto))
 	rt.router.DELETE("/users/:username/photos/:photoId/likes/:likeId", rt.wrap(rt.unlikePhoto))
