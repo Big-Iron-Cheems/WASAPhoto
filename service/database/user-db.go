@@ -27,11 +27,8 @@ func (db *appdbimpl) CreateUser(user User) (User, error) {
 		return User{}, err
 	}
 
-	// Fetch the user details using a similar vulnerable method
-	query = fmt.Sprintf(`SELECT * FROM Users WHERE username = '%s';`, user.Username)
-	row := db.c.QueryRow(query)
-
-	err = row.Scan(&user.UserId, &user.Username) // Adjust based on your User struct fields
+	// Fetch the user details using GetUserProfile
+	user, err = db.GetUserProfile(user)
 	if err != nil {
 		return User{}, err
 	}
