@@ -24,12 +24,6 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, _ httprouter.
 		return
 	}
 
-	// Validate the username
-	if err = validateString(usernamePattern, user.Username); err != nil {
-		respondWithJSONError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	// Check if the user exists or log in the user
 	user, err = rt.db.CreateUser(user)
 	if err != nil {

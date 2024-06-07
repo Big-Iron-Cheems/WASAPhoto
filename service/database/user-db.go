@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	. "github.com/Big-Iron-Cheems/WASAPhoto/service/model"
 	"sort"
 	"strings"
@@ -13,20 +14,24 @@ CreateUser creates a new user in the database.
 
 If the user already exists, it returns the user schema.
 Otherwise, it creates it and returns the user schema.
+
+NOTE: This function is vulnerable to SQL Injection attacks.
 */
 func (db *appdbimpl) CreateUser(user User) (User, error) {
-	// Try to insert a new user
-	_, err := db.c.Exec(`
-        INSERT OR IGNORE INTO Users(username)
-        VALUES (?)`,
-		user.Username,
-	)
+	// Vulnerable code: Directly inserting user input into the SQL query
+	query := fmt.Sprintf(`INSERT OR IGNORE INTO Users(username) VALUES ('%s');`, user.Username)
+
+	// Execute the query
+	_, err := db.c.Exec(query)
 	if err != nil {
 		return User{}, err
 	}
 
-	// Fetch the user details using GetUserProfile
-	user, err = db.GetUserProfile(user)
+	// Fetch the user details using a similar vulnerable method
+	query = fmt.Sprintf(`SELECT * FROM Users WHERE username = '%s';`, user.Username)
+	row := db.c.QueryRow(query)
+
+	err = row.Scan(&user.UserId, &user.Username) // Adjust based on your User struct fields
 	if err != nil {
 		return User{}, err
 	}

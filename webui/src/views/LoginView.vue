@@ -56,13 +56,10 @@ export default {
                            v-model.trim="username"
                            placeholder="Username"
                            required
-                           pattern="^[A-Za-z0-9_\-]{3,32}$"
-                           minlength="3"
-                           maxlength="32"
-                           title="3 to 32 alphanumeric characters, allowing _ and -">
+                           minlength="3">
                     <div class="input-group-append">
                         <button type="submit" class="btn btn-primary"
-                                :disabled="username.length < 3 || username.length > 32">
+                                :disabled="username.length < 3">
                             Login
                             <svg-icon icon="log-in"/>
                         </button>
